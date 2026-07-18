@@ -13,7 +13,8 @@ surface without browsing the historical monorepo.
 |---|---|
 | **Monorepo archive** | `tzervas/mycelium` tag `archive/main-pre-component-transpile-2026-07-17` @ `aad96b7a425710db5e91094d4fc2ca21a129e41a` |
 | **Component map** | monorepo `docs/planning/gap-analysis-2026-07-16/COMPONENT-REPO-MAP-DRAFT.md` |
-| **Honesty** | Umbrella is operational wiring; components are Declared/Empirical extracts; not DN-88 production-ready dogfood; not a SemVer 1.0 claim |
+| **Honesty** | Umbrella is operational wiring; not DN-88 production-ready dogfood; not a SemVer 1.0 claim |
+| **Train** | **v0.464.0** (course-correction Phase B, 2026-07-18) — all 45 Rust component pins in `components.lock` are **verified buildable** (fmt + clippy `-D warnings` + tests green standalone at the pinned revs; `Empirical`, per-repo CI is the running witness). Pins carry rev **+ content hash** (git tree hash). `*-myc` pins remain `Declared` seed pins until the Phase E/F delivery+validation program |
 
 ## Component groups
 
