@@ -6,7 +6,9 @@
 # cannot name the rev its own commit produces; the monorepo mirror records the umbrella tip).
 # Phase E re-pin (2026-07-18): all 46 *-myc pins advanced to the delivered revs
 # (graduated-content refresh + DELIVERY.md honesty records; per-repo myc-check results
-# recorded in each DELIVERY.md — 27 CLEAN, 19 FINDINGS on Declared seed drafts, disclosed).
+# recorded in each DELIVERY.md — 26 CLEAN, 20 FINDINGS on Declared seed drafts, disclosed;
+# tally corrected 2026-07-18 from an initial 27/19 miscount, VR-5 — per-repo DELIVERY.md
+# files were always correct).
 # C5 re-pin (course-correction Phase C, 2026-07-18): 43 repos advanced to the AX-core train
 # (monorepo delta archive..fff42708 propagated + lockstep re-pin; cli-common + std-sys
 # unchanged by design — no content and no moved deps). *-myc seed pins unchanged (Declared).
