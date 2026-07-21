@@ -1,19 +1,12 @@
-# components.lock v2 — git SHA pins for the mycelium-lang umbrella
+# components.lock v2 — git SHA pins for the mycelium-lang umbrella (Rust train)
 # train=v0.464.0 (course-correction Phase B, 2026-07-18; steer handoff §6.2-2 lockstep)
 # archive_main=aad96b7a425710db5e91094d4fc2ca21a129e41a (the seed baseline; unchanged)
 # Rust component pins: rev + content hash (git tree hash of the pinned rev) — all 45 verified
-# buildable (fmt/clippy/test green standalone) at these revs. No self-pin by design (a lock
-# cannot name the rev its own commit produces; the monorepo mirror records the umbrella tip).
-# Phase E re-pin (2026-07-18): all 46 *-myc pins advanced to the delivered revs
-# (graduated-content refresh + DELIVERY.md honesty records; per-repo myc-check results
-# recorded in each DELIVERY.md — 26 CLEAN, 20 FINDINGS on Declared seed drafts, disclosed;
-# tally corrected 2026-07-18 from an initial 27/19 miscount, VR-5 — per-repo DELIVERY.md
-# files were always correct).
+# buildable (fmt/clippy/test green standalone) at these revs. No self-pin by design.
+# Dual-umbrella split (2026-07-21): *-myc pins moved to tzervas/mycelium-lang-myc.
 # C5 re-pin (course-correction Phase C, 2026-07-18): 43 repos advanced to the AX-core train
 # (monorepo delta archive..fff42708 propagated + lockstep re-pin; cli-common + std-sys
-# unchanged by design — no content and no moved deps). *-myc seed pins unchanged (Declared).
-# *-myc twin pins — carried unchanged from the 2026-07-17 seed lock. Status: Declared
-# (out of this session's repo scope; content delivery + verification is the Phase E/F program).
+# unchanged by design — no content and no moved deps).
 mycelium-bench=1958e0f6144c927928bc262f78b526f929c9e9bd tree=c67cfeddaf1e4386b9f1a41ae3f7ea431e1975c0
 mycelium-build=bd8087cf1cee6b2755b0512a747ee04889074c43 tree=98ce8edf5430499b39fe0298e4a9921694d12705
 mycelium-check=6d5f99d87157d3285d5ba53765b616136f281a4d tree=ecaefb528bb557a2eed4834d9c62642e264de789
@@ -59,49 +52,3 @@ mycelium-std-time=47ef9e7ec4143c97878083ca5c15930a21eeed83 tree=7581988a079346c1
 mycelium-std-vsa=3936b492b99ba204e9c156822f70041383a37056 tree=e473647e661d95b131d8c9a94cccbece4736078d
 mycelium-transpile=4af3ed070bda31fd433d1fd632e5a2c5d881bb06 tree=779dfe11dde6c7679b7434bb256b444b73a7e66e
 mycelium-value=6d230ad2023a716704c697ac6812a2062624b4eb tree=b2af0d818186337678ee967cb32e82aae6d4e613
-mycelium-core-myc=28ca8a8743a96be905cb0494657081ff361004d5
-mycelium-value-myc=22c349d1d18289202c6498418d0455d4793b1aab
-mycelium-runtime-myc=e6119973ec8ded6345597a220b20af49246a6d59
-mycelium-l1-myc=123c45f9c4ebcb797c90585bac1c224a795cbf0c
-mycelium-codegen-myc=104a7cdb9f2b9372c42d0dcc5fc1b86c5ef65b15
-mycelium-std-core-myc=0b5a8ad46efd3f79d2546c1de4a776e5f3181e7b
-mycelium-std-error-myc=1a833fef0caf14f75ac45d797c3843df0da87a91
-mycelium-std-ternary-myc=494ca210ff5d72325964fe598fab4b25c362afa7
-mycelium-std-content-myc=a764f5aac5c6194d839b5c8b8b796c54daab6654
-mycelium-std-dense-myc=ba3d4627bb85d9e047e61891f5c1f28d31fb8968
-mycelium-std-select-myc=ac776eefce5e8de3882dc172c09a80af108c78d1
-mycelium-std-vsa-myc=abae4e97704e141197edf258e035b8daed081ebb
-mycelium-std-swap-myc=de961320747cdb4dacbce06565932805d9140cef
-mycelium-std-collections-myc=8d12c3fc6138afe31461a2dc2f874592edb5ce52
-mycelium-std-cmp-myc=09ba84a28d04404f9fd44fc5ad778f7df7b502f1
-mycelium-std-iter-myc=da21ced5672b8fb15d2ba3ee18c76e27b73e1b37
-mycelium-std-math-myc=9e6741057dc6857fd275b4b174eb47b48ec0ee7a
-mycelium-std-numerics-myc=281163b4e600aa5aa6c43d304367d2529f61af47
-mycelium-std-text-myc=a1e5a1ef16910831fb85b7b218cd63423eae8a54
-mycelium-std-fmt-myc=e731978cd3829f8ba335f3d1911632b978da5da3
-mycelium-std-diag-myc=ffdfabd2b3a0ca576d5137cda70b3bf8c1883ac5
-mycelium-std-recover-myc=d53af1a381b6bc5a6a661980970f152fc1350bdb
-mycelium-std-spore-myc=b3869f6e3ff09b545498ed9f31f8e4d4dc290791
-mycelium-std-runtime-myc=eeeb2a76584ece93b3e8d3cc4970557a8eb2e4f7
-mycelium-std-testing-myc=37734631ae9157b2f05a7ef088a37dd458cf2404
-mycelium-std-io-myc=7b61a536f0d9fe64cc2afee9468ea28a1d4c2fc7
-mycelium-std-fs-myc=bea9cd10a1b771d174dc75b1c020bad3426f67da
-mycelium-std-time-myc=a7d73be8704dc03639d7e4c73236fefca2da9a5d
-mycelium-std-rand-myc=9b2f45c4d92e98df6c7d6cdee3082842daa8c72f
-mycelium-std-sys-myc=a84a9c468aa165e0031309ec32c82750083a4775
-mycelium-std-sys-host-myc=0a4d0f8aab442b3dfa13a8fb88c0c2d50d38095b
-mycelium-std-conformance-myc=61760bebe338277f36b369fd5cd8dc3a7c8510df
-mycelium-cli-common-myc=e74c0c1ab1c13906c079ef422638668e17022c1a
-mycelium-proj-myc=b9b8737101d77f1561e30ba74f73d524b8533377
-mycelium-spore-myc=53702198f8603f286d3e4f9b3e7eca6c274354a8
-mycelium-build-myc=2aa2f39bf023f7943266960fc2716dfcf65eefeb
-mycelium-check-myc=874f180e752ddb7a8b665265989d13cec8101c36
-mycelium-fmt-myc=6553e3494156371d29fb8abc2fd7ef6e5ae00737
-mycelium-lint-myc=65222d2e8ef09978b5b366dda17573b5c7b91b46
-mycelium-doc-myc=c4c77a0a87a81c336519bacc2df83f741fe60676
-mycelium-lsp-myc=11a3b6317f7722163fe6105abe68a8c4110f0713
-mycelium-cli-myc=f0e7f0e76d68a11c754434070a3afa13514b4c23
-mycelium-sec-myc=b4bc17a4a1b8cf07468a5ab89c88606c11151049
-mycelium-transpile-myc=ec2fddbb38afbfabac197baed4f0c1e11e8e4da6
-mycelium-bench-myc=9ccdd62f2fb7f216ebdc9e867c297236ff4507b1
-mycelium-compiler-myc=f0d7c9659e74161482dd2aeacdd45eaae60cbdf4
