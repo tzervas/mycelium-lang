@@ -7,7 +7,6 @@ Self-hosted **presentation / re-export umbrella** for Mycelium **Rust** componen
 [![CI](https://github.com/tzervas/mycelium-lang/actions/workflows/fleet-ci.yml/badge.svg?branch=main)](https://github.com/tzervas/mycelium-lang/actions/workflows/fleet-ci.yml?query=branch%3Amain)
 [![Security](https://github.com/tzervas/mycelium-lang/actions/workflows/fleet-security.yml/badge.svg?branch=main)](https://github.com/tzervas/mycelium-lang/actions/workflows/fleet-security.yml?query=branch%3Amain)
 [![Runner](https://img.shields.io/badge/runs--on-self--hosted%20podman-informational)](https://github.com/tzervas/gha-runner-ctl)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 <!-- FLEET-BADGES:END -->
 
 ## What this is
