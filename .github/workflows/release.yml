@@ -82,7 +82,7 @@ jobs:
             draw_os: rocky-9
             draw_arch: x64
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           ref: ${{ inputs.rev }}
           persist-credentials: false
@@ -136,7 +136,7 @@ jobs:
             runs_on: macos-latest
             mode: native
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           ref: ${{ inputs.rev }}
           persist-credentials: false

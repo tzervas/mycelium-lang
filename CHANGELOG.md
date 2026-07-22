@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Fixed
+- Workflows: `actions/checkout@v5` (Node.js 24) to clear Node 20 deprecation warnings on fleet-security/trivy and other jobs.
+
+
 ### Added
 - **Component-first** draw-in docs: each lock pin is a real `tzervas/*` repo; `component-draw-in.sh`, `COMPONENT_READINESS.md`, dual-mode `SHOWCASES.md`.
 - Per-component JSONL report from umbrella draw-in (`REPORT_JSONL`).
