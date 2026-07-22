@@ -1,0 +1,163 @@
+{
+  "version": 1,
+  "description": "Progressive OS/arch matrix for mycelium-lang umbrella draw-in and release. Only status=required blocks release.",
+  "targets": [
+    {
+      "id": "linux-x64-host",
+      "status": "required",
+      "os_family": "linux",
+      "arch": "x64",
+      "mode": "native",
+      "runs_on": ["self-hosted", "linux", "x64", "podman"],
+      "notes": "Primary fleet path"
+    },
+    {
+      "id": "ubuntu-24.04-x64",
+      "status": "required",
+      "os_family": "linux",
+      "arch": "x64",
+      "mode": "container",
+      "runs_on": ["self-hosted", "linux", "x64", "podman"],
+      "image": "docker.io/library/ubuntu:24.04",
+      "notes": "Core developer distro"
+    },
+    {
+      "id": "ubuntu-22.04-x64",
+      "status": "required",
+      "os_family": "linux",
+      "arch": "x64",
+      "mode": "container",
+      "runs_on": ["self-hosted", "linux", "x64", "podman"],
+      "image": "docker.io/library/ubuntu:22.04",
+      "notes": "LTS"
+    },
+    {
+      "id": "debian-bookworm-x64",
+      "status": "required",
+      "os_family": "linux",
+      "arch": "x64",
+      "mode": "container",
+      "runs_on": ["self-hosted", "linux", "x64", "podman"],
+      "image": "docker.io/library/rust:1.85-bookworm",
+      "rust_preinstalled": true,
+      "notes": "Debian stable + rust image"
+    },
+    {
+      "id": "rocky-9-x64",
+      "status": "required",
+      "os_family": "linux",
+      "arch": "x64",
+      "mode": "container",
+      "runs_on": ["self-hosted", "linux", "x64", "podman"],
+      "image": "docker.io/library/rockylinux:9",
+      "notes": "RHEL-compatible until UBI/RHEL credentials in fleet"
+    },
+    {
+      "id": "fedora-x64",
+      "status": "experimental",
+      "os_family": "linux",
+      "arch": "x64",
+      "mode": "container",
+      "runs_on": ["self-hosted", "linux", "x64", "podman"],
+      "image": "docker.io/library/fedora:40",
+      "notes": "Rolling signal"
+    },
+    {
+      "id": "linux-arm64-emu",
+      "status": "experimental",
+      "os_family": "linux",
+      "arch": "arm64",
+      "mode": "container",
+      "platform": "linux/arm64",
+      "runs_on": ["self-hosted", "linux", "x64", "podman"],
+      "image": "docker.io/library/rust:1.85-bookworm",
+      "rust_preinstalled": true,
+      "notes": "QEMU/podman multi-arch on x64 host"
+    },
+    {
+      "id": "linux-riscv64-emu",
+      "status": "experimental",
+      "os_family": "linux",
+      "arch": "riscv64",
+      "mode": "container",
+      "platform": "linux/riscv64",
+      "runs_on": ["self-hosted", "linux", "x64", "podman"],
+      "image": "docker.io/library/debian:bookworm",
+      "notes": "Emulated; may lack rust image — bootstrap rustup"
+    },
+    {
+      "id": "macos-x64-or-arm-gh",
+      "status": "experimental",
+      "os_family": "macos",
+      "arch": "host",
+      "mode": "native",
+      "runs_on": ["macos-latest"],
+      "notes": "GitHub-hosted until self-hosted Mac labels exist"
+    },
+    {
+      "id": "windows-latest-gh",
+      "status": "experimental",
+      "os_family": "windows",
+      "arch": "x64",
+      "mode": "native",
+      "runs_on": ["windows-latest"],
+      "notes": "Proxy for Win10/11 path until self-hosted windows runners; later split win10/win11"
+    },
+    {
+      "id": "freebsd",
+      "status": "planned",
+      "os_family": "freebsd",
+      "arch": "x64",
+      "mode": "native",
+      "notes": "Needs fleet FreeBSD runner or VM"
+    },
+    {
+      "id": "openbsd",
+      "status": "planned",
+      "os_family": "openbsd",
+      "arch": "x64",
+      "mode": "native",
+      "notes": "Needs fleet OpenBSD runner or VM"
+    },
+    {
+      "id": "rhel-9",
+      "status": "planned",
+      "os_family": "linux",
+      "arch": "x64",
+      "mode": "container",
+      "notes": "UBI when registry auth available; Rocky stands in for required today"
+    },
+    {
+      "id": "ubuntu-mate",
+      "status": "planned",
+      "os_family": "linux",
+      "arch": "x64",
+      "mode": "container",
+      "notes": "Desktop spin — same toolchain as Ubuntu LTS + optional desktop deps"
+    },
+    {
+      "id": "windows-10-native",
+      "status": "planned",
+      "os_family": "windows",
+      "arch": "x64",
+      "mode": "native",
+      "notes": "Self-hosted win10 label"
+    },
+    {
+      "id": "windows-11-native",
+      "status": "planned",
+      "os_family": "windows",
+      "arch": "x64",
+      "mode": "native",
+      "notes": "Self-hosted win11 label"
+    },
+    {
+      "id": "linux-x86",
+      "status": "planned",
+      "os_family": "linux",
+      "arch": "x86",
+      "mode": "container",
+      "notes": "i686 multiarch later"
+    }
+  ]
+}

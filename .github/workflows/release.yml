@@ -1,26 +1,27 @@
-# Per-release process: full umbrella draw-in at the exact rev, then fresh tag + GitHub Release.
-# Source-only (no crates.io). Never overwrites tags. Self-hosted fleet only.
-name: release (draw-in + tag + GitHub Release)
+# Per-release: required multi-OS/arch draw-in at exact rev, then fresh tag + GitHub Release.
+# Experimental matrix legs are reported but do not block the cut.
+# Source-only (no crates.io). Self-hosted for required cells; GH-hosted only for experimental.
+name: release (multi-OS draw-in + tag)
 
 on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "Tag name to create (fresh only — existing tag refuses)"
+        description: "Tag name (fresh only)"
         required: true
         default: "v0.464.0"
       rev:
         description: "Full 40-char commit SHA to validate and tag"
         required: true
       mode:
-        description: "Draw-in depth before cut"
+        description: "Draw-in depth for required cells"
         type: choice
         options: [check+test, check, test]
         default: check+test
       notes:
-        description: "Release notes body (markdown)"
+        description: "Release notes (markdown)"
         required: false
-        default: "Umbrella release. Full pin draw-in green at this rev."
+        default: "Umbrella release. Required multi-OS pin draw-in green at this rev."
 
 permissions:
   contents: write
@@ -30,10 +31,8 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  draw-in:
-    name: pre-release full draw-in
+  validate-rev:
     runs-on: [self-hosted, linux, x64, podman]
-    timeout-minutes: 180
     steps:
       - name: Validate rev shape
         env:
@@ -41,37 +40,154 @@ jobs:
         run: |
           set -euo pipefail
           case "$REV" in
-            *[!0-9a-f]*|"") echo "::error::rev must be full lowercase 40-hex SHA"; exit 1;;
+            *[!0-9a-f]*|"") echo "::error::rev must be full lowercase 40-hex"; exit 1;;
           esac
           test "${#REV}" -eq 40
 
+  draw-in-required:
+    name: release draw-in ${{ matrix.id }}
+    needs: validate-rev
+    runs-on: ${{ matrix.runs_on }}
+    timeout-minutes: 180
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - id: linux-x64-host
+            runs_on: [self-hosted, linux, x64, podman]
+            mode: native
+          - id: ubuntu-24.04-x64
+            runs_on: [self-hosted, linux, x64, podman]
+            mode: container
+            image: docker.io/library/ubuntu:24.04
+            draw_os: ubuntu-24.04
+            draw_arch: x64
+          - id: ubuntu-22.04-x64
+            runs_on: [self-hosted, linux, x64, podman]
+            mode: container
+            image: docker.io/library/ubuntu:22.04
+            draw_os: ubuntu-22.04
+            draw_arch: x64
+          - id: debian-bookworm-x64
+            runs_on: [self-hosted, linux, x64, podman]
+            mode: container
+            image: docker.io/library/rust:1.85-bookworm
+            rust_preinstalled: "1"
+            draw_os: debian-bookworm
+            draw_arch: x64
+          - id: rocky-9-x64
+            runs_on: [self-hosted, linux, x64, podman]
+            mode: container
+            image: docker.io/library/rockylinux:9
+            draw_os: rocky-9
+            draw_arch: x64
+    steps:
       - uses: actions/checkout@v4
         with:
           ref: ${{ inputs.rev }}
           persist-credentials: false
-
       - name: Lock format at release rev
         run: |
           set -euo pipefail
           rust_pins=$(grep -cE '^[a-z0-9-]+=[0-9a-f]{40} tree=[0-9a-f]{40}$' components.lock || true)
           myc_pins=$(grep -cE '^[a-z0-9-]+-myc=[0-9a-f]{40}$' components.lock || true)
-          echo "rust_pins=$rust_pins myc_pins=$myc_pins"
           test "$rust_pins" -eq 45
           test "$myc_pins" -eq 0
-
-      - name: Full pin draw-in (user install simulation)
+      - name: Native draw-in
+        if: matrix.mode == 'native'
         env:
           MODE: ${{ inputs.mode }}
-          FAIL_FAST: "1"
-          WORKDIR: ${{ runner.temp }}/mycelium-drawin-release
+          DRAW_IN_OS: linux-host
+          DRAW_IN_ARCH: x64
+          WORKDIR: ${{ runner.temp }}/drawin-rel-${{ matrix.id }}
+        run: bash scripts/umbrella-draw-in.sh
+      - name: Container draw-in
+        if: matrix.mode == 'container'
+        env:
+          MODE: ${{ inputs.mode }}
+          IMAGE: ${{ matrix.image }}
+          RUST_PREINSTALLED: ${{ matrix.rust_preinstalled || '0' }}
+          DRAW_IN_OS: ${{ matrix.draw_os }}
+          DRAW_IN_ARCH: ${{ matrix.draw_arch }}
+        run: bash scripts/draw-in-container.sh
+
+  draw-in-experimental:
+    name: experimental ${{ matrix.id }}
+    needs: validate-rev
+    runs-on: ${{ matrix.runs_on }}
+    timeout-minutes: 120
+    continue-on-error: true
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - id: linux-arm64-emu
+            runs_on: [self-hosted, linux, x64, podman]
+            mode: container
+            image: docker.io/library/rust:1.85-bookworm
+            platform: linux/arm64
+            rust_preinstalled: "1"
+            draw_os: debian-bookworm
+            draw_arch: arm64
+          - id: windows-gh
+            runs_on: windows-latest
+            mode: native-windows
+          - id: macos-gh
+            runs_on: macos-latest
+            mode: native
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.rev }}
+          persist-credentials: false
+      - name: Install rustup (macOS)
+        if: matrix.mode == 'native'
+        run: |
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+      - name: Install rustup (Windows)
+        if: matrix.mode == 'native-windows'
+        shell: pwsh
+        run: |
+          Invoke-WebRequest https://win.rustup.rs/x86_64 -OutFile rustup-init.exe
+          .\rustup-init.exe -y
+          echo "$env:USERPROFILE\.cargo\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+      - name: Container experimental
+        if: matrix.mode == 'container'
+        env:
+          MODE: check
+          PIN_LIMIT: "8"
+          IMAGE: ${{ matrix.image }}
+          PLATFORM: ${{ matrix.platform || '' }}
+          RUST_PREINSTALLED: ${{ matrix.rust_preinstalled || '0' }}
+          DRAW_IN_OS: ${{ matrix.draw_os }}
+          DRAW_IN_ARCH: ${{ matrix.draw_arch }}
+        run: bash scripts/draw-in-container.sh
+      - name: Native experimental Unix
+        if: matrix.mode == 'native'
+        env:
+          MODE: check
+          PIN_LIMIT: "8"
+          DRAW_IN_OS: macos
+          DRAW_IN_ARCH: host
+        run: bash scripts/umbrella-draw-in.sh
+      - name: Native experimental Windows
+        if: matrix.mode == 'native-windows'
+        shell: bash
+        env:
+          MODE: check
+          PIN_LIMIT: "8"
+          DRAW_IN_OS: windows
+          DRAW_IN_ARCH: x64
         run: bash scripts/umbrella-draw-in.sh
 
   release:
     name: tag + GitHub Release
-    needs: draw-in
+    needs: [draw-in-required]
+    if: needs.draw-in-required.result == 'success'
     runs-on: [self-hosted, linux, x64, podman]
     steps:
-      - name: Refuse if tag already exists (fresh-tags-only)
+      - name: Refuse if tag already exists
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -81,10 +197,9 @@ jobs:
             -H "Accept: application/vnd.github+json" \
             "${GITHUB_API_URL}/repos/${GITHUB_REPOSITORY}/git/ref/tags/${{ inputs.tag }}")
           if [ "$code" = "200" ]; then
-            echo "::error::tag ${{ inputs.tag }} already exists — never overwrite"
+            echo "::error::tag ${{ inputs.tag }} already exists"
             exit 1
           fi
-
       - name: Verify rev exists
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -94,9 +209,8 @@ jobs:
             -H "Authorization: Bearer ${GITHUB_TOKEN}" \
             -H "Accept: application/vnd.github+json" \
             "${GITHUB_API_URL}/repos/${GITHUB_REPOSITORY}/commits/${{ inputs.rev }}")
-          test "$code" = "200" || { echo "::error::rev not found (HTTP $code)"; exit 1; }
-
-      - name: Create Release (tag at pinned rev + source archives)
+          test "$code" = "200"
+      - name: Create Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NOTES: ${{ inputs.notes }}
@@ -109,7 +223,6 @@ jobs:
             "${GITHUB_API_URL}/repos/${GITHUB_REPOSITORY}/releases" \
             -d "{\"tag_name\":\"${{ inputs.tag }}\",\"target_commitish\":\"${{ inputs.rev }}\",\"name\":\"${{ inputs.tag }}\",\"body\":${body},\"draft\":false,\"prerelease\":false}")
           if [ "$code" != "201" ]; then
-            echo "::error::release creation failed (HTTP $code)"; cat /tmp/release-resp.json; exit 1
+            echo "::error::HTTP $code"; cat /tmp/release-resp.json; exit 1
           fi
-          echo "Release created:"
           python3 -c 'import json; print(json.load(open("/tmp/release-resp.json"))["html_url"])'
