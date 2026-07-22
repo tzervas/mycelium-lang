@@ -1,13 +1,25 @@
 name: ci
+
+# Umbrella product CI — not a local crate. Validates the lock and simulates a
+# full user/developer install of every Rust pin (draw-in).
 on:
   workflow_dispatch:
+    inputs:
+      mode:
+        description: "Gate depth"
+        type: choice
+        options: [check, check+test, test]
+        default: check+test
   push:
     branches: [main]
   pull_request:
     branches: [main]
+  schedule:
+    # Weekly full draw-in (Sunday 06:17 UTC)
+    - cron: "17 6 * * 0"
 
 concurrency:
-  group: ci-${{ github.workflow }}-${{ github.ref }}
+  group: ci-umbrella-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 permissions:
@@ -27,39 +39,25 @@ jobs:
           rust_pins=$(grep -cE '^[a-z0-9-]+=[0-9a-f]{40} tree=[0-9a-f]{40}$' components.lock || true)
           myc_pins=$(grep -cE '^[a-z0-9-]+-myc=[0-9a-f]{40}$' components.lock || true)
           echo "rust_pins=$rust_pins myc_pins=$myc_pins"
-          # Dual-umbrella split (2026-07-21): this repo pins Rust only.
-          # Native *-myc pins live in tzervas/mycelium-lang-myc.
           test "$rust_pins" -eq 45
           test "$myc_pins" -eq 0
 
-  integration:
-    name: apex cargo check (self-hosted)
+  draw-in:
+    name: full pin draw-in (${{ github.event_name == 'pull_request' && 'check' || 'check+test' }})
     needs: lock-format
     runs-on: [self-hosted, linux, x64, podman]
-    timeout-minutes: 90
+    timeout-minutes: 180
     steps:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
-      - name: Integration-check apex components
+      - name: Draw-in all Rust pins (install simulation)
+        env:
+          # PRs: check-only (faster). main / schedule / dispatch: check+test by default.
+          MODE: ${{ github.event_name == 'workflow_dispatch' && inputs.mode || (github.event_name == 'pull_request' && 'check' || 'check+test') }}
+          FAIL_FAST: "1"
+          WORKDIR: ${{ runner.temp }}/mycelium-drawin
         run: |
           set -euo pipefail
-          mkdir -p _it
-          for apex in mycelium-std-conformance mycelium-cli mycelium-lint mycelium-check \
-            mycelium-bench mycelium-fmt mycelium-doc mycelium-sec mycelium-build \
-            mycelium-transpile mycelium-std-sys-host mycelium-std-fmt mycelium-std-math \
-            mycelium-std-spore mycelium-std-cmp mycelium-std-collections mycelium-std-dense \
-            mycelium-std-fs mycelium-std-io mycelium-std-iter mycelium-std-rand \
-            mycelium-std-text mycelium-std-error; do
-            rev=$(grep -E "^${apex}=" components.lock | sed -E 's/^[a-z0-9-]+=([0-9a-f]{40}).*/\1/')
-            test -n "$rev"
-            if [ ! -d "_it/${apex}/.git" ]; then
-              git clone -q --depth 1 "https://github.com/tzervas/${apex}" "_it/${apex}" || \
-                git clone -q "https://github.com/tzervas/${apex}" "_it/${apex}"
-            fi
-            git -C "_it/${apex}" fetch -q --depth 1 origin "$rev" 2>/dev/null || \
-              git -C "_it/${apex}" fetch -q origin "$rev"
-            git -C "_it/${apex}" checkout -q "$rev"
-            (cd "_it/${apex}" && cargo check -q)
-            echo "OK ${apex}@${rev}"
-          done
+          echo "MODE=$MODE"
+          bash scripts/umbrella-draw-in.sh
