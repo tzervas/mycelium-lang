@@ -13,17 +13,35 @@ Self-hosted **presentation / re-export umbrella** for Mycelium **Rust** componen
 
 | Workflow | Role |
 |----------|------|
-| **`ci.yml`** | **Product gate:** lock format + **full pin draw-in** (clone every Rust pin @ lock rev, `cargo check` / `cargo test`) — simulates a developer installing the whole train |
-| **`fleet-ci.yml`** | Fleet hygiene only (no `Cargo.toml` in this repo → single-job detect success). Does **not** replace draw-in |
+| **`ci.yml`** | **Product gate:** lock format + **multi-OS/arch pin draw-in** (required matrix blocks; experimental is non-blocking) |
+| **`fleet-ci.yml`** | Fleet hygiene only (no in-repo stack). Does **not** replace draw-in |
 | **`fleet-security.yml`** | gitleaks (+ advisory trivy) |
-| **`release.yml`** | **Per-release:** draw-in at exact rev (`check+test` default) → only then create tag + GitHub Release |
+| **`release.yml`** | **Per-release:** required multi-OS draw-in at exact rev → then tag + GitHub Release |
+
+### Progressive OS / arch matrix
+
+See **[docs/SUPPORT_MATRIX.md](docs/SUPPORT_MATRIX.md)** and machine-readable
+[`.github/draw-in-matrix.json`](.github/draw-in-matrix.json).
+
+| Tier | Today (required) | Expanding |
+|------|------------------|-----------|
+| OS | Linux host + Ubuntu 22.04/24.04 + Debian bookworm + Rocky 9 (containers on fleet) | Fedora, FreeBSD, OpenBSD, Ubuntu MATE, RHEL UBI, macOS self-hosted, Win10/11 self-hosted |
+| Arch | **x64** native | **arm64** / **riscv64** via Podman QEMU (experimental); x86 later |
+| Windows | experimental via `windows-latest` (smoke pins) | direct Win10/11 fleet labels |
 
 Local / operator:
 
 ```bash
-# Full install simulation (same as CI draw-in)
+# Native host draw-in
 bash scripts/umbrella-draw-in.sh
 MODE=check+test bash scripts/umbrella-draw-in.sh
+
+# Distro container on fleet host (Podman)
+IMAGE=docker.io/library/ubuntu:24.04 MODE=check bash scripts/draw-in-container.sh
+IMAGE=docker.io/library/rockylinux:9 MODE=check bash scripts/draw-in-container.sh
+# Emulated arm64
+PLATFORM=linux/arm64 IMAGE=docker.io/library/rust:1.85-bookworm RUST_PREINSTALLED=1 \
+  MODE=check PIN_LIMIT=5 bash scripts/draw-in-container.sh
 ```
 
 
