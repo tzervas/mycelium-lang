@@ -33,7 +33,7 @@ jobs:
     name: components.lock format (Rust train)
     runs-on: [self-hosted, linux, x64, podman]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           persist-credentials: false
       - name: Verify lock format
@@ -94,7 +94,7 @@ jobs:
             draw_os: rocky-9
             draw_arch: x64
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           persist-credentials: false
       - name: Resolve MODE / PIN_LIMIT
@@ -177,7 +177,7 @@ jobs:
             draw_os: windows
             draw_arch: x64
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           persist-credentials: false
       - name: Resolve MODE
