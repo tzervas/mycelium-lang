@@ -4,6 +4,20 @@ This umbrella’s **draw-in** and **release** gates expand OS/arch coverage over
 **Honesty:** only tiers marked **required** block a release. Everything else is
 **experimental** (reported, non-blocking) or **planned** (docs only).
 
+
+## Component repos are the unit under test
+
+Every required OS/arch cell runs **draw-in across all `components.lock` pins**.
+Each pin is a **separate GitHub component repository** (`tzervas/mycelium-*`),
+not a path inside this umbrella. The umbrella only orchestrates:
+
+1. Pin set + revs (`components.lock`)
+2. Multi-OS/arch matrix (this doc)
+3. Per-component JSONL report (`REPORT_JSONL=…`)
+4. Release gate when **all components × required OS cells** are green
+
+See [COMPONENT_READINESS.md](./COMPONENT_READINESS.md) and [SHOWCASES.md](./SHOWCASES.md).
+
 ## Principles
 
 1. **Simulate a real install** — clone every `components.lock` pin @ rev and run cargo gates.
