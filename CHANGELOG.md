@@ -3,6 +3,8 @@
 ## [Unreleased]
 
 ### Added
+- **Component-first** draw-in docs: each lock pin is a real `tzervas/*` repo; `component-draw-in.sh`, `COMPONENT_READINESS.md`, dual-mode `SHOWCASES.md`.
+- Per-component JSONL report from umbrella draw-in (`REPORT_JSONL`).
 - Progressive **OS/arch support matrix** (`docs/SUPPORT_MATRIX.md`, `.github/draw-in-matrix.json`).
 - Required draw-in matrix: Linux host + Ubuntu 22.04/24.04 + Debian bookworm + Rocky 9 (Podman containers).
 - Experimental: Fedora, arm64 QEMU, macOS/Windows GitHub-hosted smoke (non-blocking).

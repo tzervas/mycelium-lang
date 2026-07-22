@@ -20,7 +20,7 @@ Self-hosted **presentation / re-export umbrella** for Mycelium **Rust** componen
 
 ### Progressive OS / arch matrix
 
-See **[docs/SUPPORT_MATRIX.md](docs/SUPPORT_MATRIX.md)** and machine-readable
+See **[docs/SUPPORT_MATRIX.md](docs/SUPPORT_MATRIX.md)**, **[docs/COMPONENT_READINESS.md](docs/COMPONENT_READINESS.md)** (per-repo pins), **[docs/SHOWCASES.md](docs/SHOWCASES.md)** (fast vs certified demos) and machine-readable
 [`.github/draw-in-matrix.json`](.github/draw-in-matrix.json).
 
 | Tier | Today (required) | Expanding |

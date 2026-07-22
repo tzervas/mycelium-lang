@@ -112,7 +112,7 @@ jobs:
             echo "mode=check+test" >> "$GITHUB_OUTPUT"
             echo "pin_limit=" >> "$GITHUB_OUTPUT"
           fi
-      - name: Native host draw-in
+      - name: Native host draw-in (all component repos)
         if: matrix.mode == 'native'
         env:
           MODE: ${{ steps.cfg.outputs.mode }}
@@ -120,7 +120,15 @@ jobs:
           DRAW_IN_OS: linux-host
           DRAW_IN_ARCH: x64
           WORKDIR: ${{ runner.temp }}/drawin-${{ matrix.id }}
+          REPORT_JSONL: ${{ runner.temp }}/component-report-${{ matrix.id }}.jsonl
         run: bash scripts/umbrella-draw-in.sh
+      - name: Upload per-component report
+        if: matrix.mode == 'native' && always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: component-draw-in-${{ matrix.id }}
+          path: ${{ runner.temp }}/component-report-${{ matrix.id }}.jsonl
+          if-no-files-found: ignore
       - name: Container distro draw-in
         if: matrix.mode == 'container'
         env:
