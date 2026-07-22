@@ -1,92 +1,115 @@
-# Release cut on the self-hosted Podman fleet (gha-runner-ctl-compliant labels; no
-# GitHub-hosted fallback — the job runs only when a fleet listener registers a runner).
-#
-# POLICY: source-only release (no crates.io — mirrors tzervas/mycelium ADR-018 posture). One
-# workflow_dispatch = one tag + one GitHub Release at the EXACT rev passed in (the course-
-# correction release manifest rev — see tzervas/mycelium
-# docs/planning/course-correction-2026-07-18/RELEASE-v0.464.0.md), never the moving branch tip.
-# Fresh-tags-only: an existing tag of the same name is a hard, never-silent refusal — this
-# workflow never overwrites or force-moves a tag. GitHub attaches the reproducible source
-# archives (tar.gz/zip) to the Release automatically; `git archive --format=tar.gz <tag>`
-# reproduces the tarball byte-stably from any clone.
-#
-# Supply-chain posture: no third-party actions — the job is plain curl against this repo's own
-# REST API using the workflow-scoped GITHUB_TOKEN (contents: write only).
-name: release (tag + GitHub Release at a pinned rev)
+# Per-release process: full umbrella draw-in at the exact rev, then fresh tag + GitHub Release.
+# Source-only (no crates.io). Never overwrites tags. Self-hosted fleet only.
+name: release (draw-in + tag + GitHub Release)
 
 on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "Tag name to create (fresh only — an existing tag refuses)"
+        description: "Tag name to create (fresh only — existing tag refuses)"
         required: true
         default: "v0.464.0"
       rev:
-        description: "Full 40-char commit SHA to tag (the release-manifest rev)"
+        description: "Full 40-char commit SHA to validate and tag"
         required: true
+      mode:
+        description: "Draw-in depth before cut"
+        type: choice
+        options: [check+test, check, test]
+        default: check+test
       notes:
         description: "Release notes body (markdown)"
         required: false
-        default: "Course-correction train release. Verification basis and honesty ladder: tzervas/mycelium docs/planning/course-correction-2026-07-18/RELEASE-v0.464.0.md"
+        default: "Umbrella release. Full pin draw-in green at this rev."
 
 permissions:
   contents: write
 
+concurrency:
+  group: release-umbrella
+  cancel-in-progress: false
+
 jobs:
-  release:
-    # TEMPORARY (2026-07-19, maintainer directive): one-time GitHub-hosted run so the
-    # v0.464.0 cut can execute while the self-hosted fleet is offline. Revert to
-    # [self-hosted, linux, x64, podman] once the release run passes.
-    runs-on: ubuntu-latest
+  draw-in:
+    name: pre-release full draw-in
+    runs-on: [self-hosted, linux, x64, podman]
+    timeout-minutes: 180
     steps:
-      - name: Validate inputs (never-silent — a malformed rev refuses here, not downstream)
-        run: |
-          set -eu
-          case "${{ inputs.rev }}" in
-            *[!0-9a-f]*|"") echo "::error::rev must be a full lowercase 40-hex SHA"; exit 1;;
-          esac
-          test "${#REV}" -eq 40 || { echo "::error::rev must be exactly 40 hex chars"; exit 1; }
+      - name: Validate rev shape
         env:
           REV: ${{ inputs.rev }}
-
-      - name: Refuse if the tag already exists (fresh-tags-only)
         run: |
-          set -eu
+          set -euo pipefail
+          case "$REV" in
+            *[!0-9a-f]*|"") echo "::error::rev must be full lowercase 40-hex SHA"; exit 1;;
+          esac
+          test "${#REV}" -eq 40
+
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.rev }}
+          persist-credentials: false
+
+      - name: Lock format at release rev
+        run: |
+          set -euo pipefail
+          rust_pins=$(grep -cE '^[a-z0-9-]+=[0-9a-f]{40} tree=[0-9a-f]{40}$' components.lock || true)
+          myc_pins=$(grep -cE '^[a-z0-9-]+-myc=[0-9a-f]{40}$' components.lock || true)
+          echo "rust_pins=$rust_pins myc_pins=$myc_pins"
+          test "$rust_pins" -eq 45
+          test "$myc_pins" -eq 0
+
+      - name: Full pin draw-in (user install simulation)
+        env:
+          MODE: ${{ inputs.mode }}
+          FAIL_FAST: "1"
+          WORKDIR: ${{ runner.temp }}/mycelium-drawin-release
+        run: bash scripts/umbrella-draw-in.sh
+
+  release:
+    name: tag + GitHub Release
+    needs: draw-in
+    runs-on: [self-hosted, linux, x64, podman]
+    steps:
+      - name: Refuse if tag already exists (fresh-tags-only)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
           code=$(curl -sS -o /dev/null -w '%{http_code}' \
             -H "Authorization: Bearer ${GITHUB_TOKEN}" \
             -H "Accept: application/vnd.github+json" \
             "${GITHUB_API_URL}/repos/${GITHUB_REPOSITORY}/git/ref/tags/${{ inputs.tag }}")
           if [ "$code" = "200" ]; then
-            echo "::error::tag ${{ inputs.tag }} already exists — this workflow never overwrites a tag"
+            echo "::error::tag ${{ inputs.tag }} already exists — never overwrite"
             exit 1
           fi
+
+      - name: Verify rev exists
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Verify the rev exists in this repository
         run: |
-          set -eu
+          set -euo pipefail
           code=$(curl -sS -o /dev/null -w '%{http_code}' \
             -H "Authorization: Bearer ${GITHUB_TOKEN}" \
             -H "Accept: application/vnd.github+json" \
             "${GITHUB_API_URL}/repos/${GITHUB_REPOSITORY}/commits/${{ inputs.rev }}")
-          test "$code" = "200" || { echo "::error::rev ${{ inputs.rev }} not found (HTTP $code)"; exit 1; }
+          test "$code" = "200" || { echo "::error::rev not found (HTTP $code)"; exit 1; }
+
+      - name: Create Release (tag at pinned rev + source archives)
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Create the Release (creates the tag at the pinned rev + auto source archives)
+          NOTES: ${{ inputs.notes }}
         run: |
-          set -eu
-          body=$(printf '%s' "${NOTES}" | sed 's/\\/\\\\/g; s/"/\\"/g' | awk '{printf "%s\\n", $0}')
+          set -euo pipefail
+          body=$(printf '%s' "${NOTES}" | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()))')
           code=$(curl -sS -o /tmp/release-resp.json -w '%{http_code}' -X POST \
             -H "Authorization: Bearer ${GITHUB_TOKEN}" \
             -H "Accept: application/vnd.github+json" \
             "${GITHUB_API_URL}/repos/${GITHUB_REPOSITORY}/releases" \
-            -d "{\"tag_name\":\"${{ inputs.tag }}\",\"target_commitish\":\"${{ inputs.rev }}\",\"name\":\"${{ inputs.tag }}\",\"body\":\"${body}\",\"draft\":false,\"prerelease\":false}")
+            -d "{\"tag_name\":\"${{ inputs.tag }}\",\"target_commitish\":\"${{ inputs.rev }}\",\"name\":\"${{ inputs.tag }}\",\"body\":${body},\"draft\":false,\"prerelease\":false}")
           if [ "$code" != "201" ]; then
             echo "::error::release creation failed (HTTP $code)"; cat /tmp/release-resp.json; exit 1
           fi
-          echo "Release created:"; grep -o '"html_url": *"[^"]*"' /tmp/release-resp.json | head -1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NOTES: ${{ inputs.notes }}
+          echo "Release created:"
+          python3 -c 'import json; print(json.load(open("/tmp/release-resp.json"))["html_url"])'

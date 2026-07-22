@@ -9,6 +9,25 @@ Self-hosted **presentation / re-export umbrella** for Mycelium **Rust** componen
 [![Runner](https://img.shields.io/badge/runs--on-self--hosted%20podman-informational)](https://github.com/tzervas/gha-runner-ctl)
 <!-- FLEET-BADGES:END -->
 
+## CI surface (honest)
+
+| Workflow | Role |
+|----------|------|
+| **`ci.yml`** | **Product gate:** lock format + **full pin draw-in** (clone every Rust pin @ lock rev, `cargo check` / `cargo test`) — simulates a developer installing the whole train |
+| **`fleet-ci.yml`** | Fleet hygiene only (no `Cargo.toml` in this repo → single-job detect success). Does **not** replace draw-in |
+| **`fleet-security.yml`** | gitleaks (+ advisory trivy) |
+| **`release.yml`** | **Per-release:** draw-in at exact rev (`check+test` default) → only then create tag + GitHub Release |
+
+Local / operator:
+
+```bash
+# Full install simulation (same as CI draw-in)
+bash scripts/umbrella-draw-in.sh
+MODE=check+test bash scripts/umbrella-draw-in.sh
+```
+
+
+
 ## What this is
 
 A clean entry point that **pins** Rust component SHAs (see [`components.lock`](./components.lock))
