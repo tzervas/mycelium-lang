@@ -39,10 +39,11 @@ error[myc-run-residual]: `hostcall` is outside the evaluation-complete fragment
   (RFC-0007 §4.6): a v0 `wild` block body must be a host-call form `name(args…)` …
 ```
 
-`wild { name(args) }` lowers to a `Node::Op { prim: "wild:name" }`, but the host-call
-registry is **empty by design** (RFC-0028 §4.3) — no `wild:` op is registered in
-`mycelium-interp` or `mycelium-std-sys-host`. So **no Rust/native function is callable
-from Mycelium today.** Until this lands, "bridge the gaps with Rust" is not mechanically
+(The residual above is the minimal case — a non-host-call body.) Even a **well-formed**
+`wild { name(args) }` does not run: it lowers to a `Node::Op { prim: "wild:name" }`, but the
+host-call registry is **empty by design** (RFC-0028 §4.3) — no `wild:` op is registered in
+`mycelium-interp` or `mycelium-std-sys-host` (a host-call form otherwise resolves to an
+`UnknownPrim`). So **no Rust/native function is callable from Mycelium today.** Until this lands, "bridge the gaps with Rust" is not mechanically
 possible — there is no seam to call through.
 
 ## Extraction check: these gaps are genuine, not extraction-lag
@@ -134,8 +135,10 @@ floor and the concurrency model compose.
 
 ## Artifacts / evidence
 
-- Transpiler `--vet` on `gha-runner-ctl`: **16.7% expressible / 0.0% `checked_fraction`**
-  (file-gated), gap categories dominated by method-call syntax, multi-statement/
+- Transpiler `--vet` on `gha-runner-ctl`: **16.7% expressible**; `checked_fraction` was not
+  validly measured by `--vet` here (its oracle needs `mycelium-check` in-workspace), but a
+  direct `myc check` shows the emitted `pool.myc` type-checks clean and `lib.myc` fails
+  (≈2.1% file-gated). Gap categories dominated by method-call syntax, multi-statement/
   unit-returning bodies, imports, and non-unsigned types — recorded in
   `mycelium-transpile/docs/`.
 - Working native pure-core port: `gha-runner-ctl/mycelium-port/` (`myc check` clean,

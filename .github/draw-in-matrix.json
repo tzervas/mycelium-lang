@@ -13,7 +13,7 @@
     },
     {
       "id": "ubuntu-24.04-x64",
-      "status": "required",
+      "status": "experimental",
       "os_family": "linux",
       "arch": "x64",
       "mode": "container",
@@ -23,7 +23,7 @@
     },
     {
       "id": "ubuntu-22.04-x64",
-      "status": "required",
+      "status": "experimental",
       "os_family": "linux",
       "arch": "x64",
       "mode": "container",
@@ -33,7 +33,7 @@
     },
     {
       "id": "debian-bookworm-x64",
-      "status": "required",
+      "status": "experimental",
       "os_family": "linux",
       "arch": "x64",
       "mode": "container",
@@ -44,7 +44,7 @@
     },
     {
       "id": "rocky-9-x64",
-      "status": "required",
+      "status": "experimental",
       "os_family": "linux",
       "arch": "x64",
       "mode": "container",
