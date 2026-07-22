@@ -42,9 +42,9 @@ See [COMPONENT_READINESS.md](./COMPONENT_READINESS.md) and [SHOWCASES.md](./SHOW
 | Target | Status | Runner / image | Notes |
 |--------|--------|----------------|-------|
 | **Linux host** (fleet Podman) | **required** | `[self-hosted, linux, x64, podman]` | Primary path today |
-| **Ubuntu** 22.04 / 24.04 | **required** (container) | `ubuntu:22.04`, `ubuntu:24.04` + rustup | Core Debian-family |
-| **Debian** bookworm | **required** (container) | `rust:*-bookworm` or debian+rustup | Core |
-| **Rocky Linux** 9 | **required** (container) | `rockylinux:9` + rustup | RHEL-compatible stand-in |
+| **Ubuntu** 22.04 / 24.04 | experimental (container)¹ | `ubuntu:22.04`, `ubuntu:24.04` + rustup | Core Debian-family |
+| **Debian** bookworm | experimental (container)¹ | `rust:*-bookworm` or debian+rustup | Core |
+| **Rocky Linux** 9 | experimental (container)¹ | `rockylinux:9` + rustup | RHEL-compatible stand-in |
 | **RHEL** 9 | planned | UBI/subscription image when available | Same family as Rocky |
 | **Fedora** latest | experimental (container) | `fedora:latest` + rustup | Rolling signal |
 | **Ubuntu MATE** / desktop spins | planned | Treat as Ubuntu LTS + desktop packages later | “mate” = desktop flavor, not separate toolchain |
@@ -52,6 +52,15 @@ See [COMPONENT_READINESS.md](./COMPONENT_READINESS.md) and [SHOWCASES.md](./SHOW
 | **OpenBSD** | planned | self-hosted/VM | Needs fleet image |
 | **macOS** | experimental | `macos-latest` (GitHub-hosted) | Expand to self-hosted Mac later |
 | **Windows 10 / 11** | planned → experimental via `windows-latest` | GH-hosted first; self-hosted `windows` later | Direct Win support is a goal |
+
+> ¹ **Temporarily demoted from required.** The Ubuntu/Debian/Rocky cells ran via
+> `scripts/draw-in-container.sh`, which starts a **nested** podman/docker container. The fleet
+> runners are themselves podman-spawned containers with no in-container engine (by design — the
+> fleet manager `tzervas/gha-runner-ctl` spins runners up via podman), so nested draw-in cannot
+> run there. They stay non-blocking until the fleet registers **distro-image runners** so
+> per-distro draw-in runs **natively** (no nesting); then they return to required as
+> `mode: native`. The **Linux host** native cell remains the required Linux gate. See
+> `tzervas/gha-runner-ctl#28`.
 
 ## Languages / trains (later)
 
