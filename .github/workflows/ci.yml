@@ -5,32 +5,60 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
 jobs:
-  integration:
-    # Umbrella integration validation (steer handoff §6.2-4): resolve every Rust component pin
-    # and type-check the apex repos — cargo pulls and checks the full pinned dependency graph
-    # transitively, so a green run validates that ALL Rust pins resolve and compose. (*-myc pins
-    # are format/existence-checked only; their content validation is the Phase-E/F program.)
-    runs-on: ubuntu-latest
+  lock-format:
+    name: components.lock format (Rust train)
+    runs-on: [self-hosted, linux, x64, podman]
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@1.96.1
-      - name: Verify lock format
+        with:
+          persist-credentials: false
+      - name: Verify lock format (Rust-only umbrella)
         run: |
-          set -eu
-          rust_pins=$(grep -cE '^[a-z0-9-]+=[0-9a-f]{40} tree=[0-9a-f]{40}$' components.lock)
-          myc_pins=$(grep -cE '^[a-z0-9-]+-myc=[0-9a-f]{40}$' components.lock)
+          set -euo pipefail
+          rust_pins=$(grep -cE '^[a-z0-9-]+=[0-9a-f]{40} tree=[0-9a-f]{40}$' components.lock || true)
+          myc_pins=$(grep -cE '^[a-z0-9-]+-myc=[0-9a-f]{40}$' components.lock || true)
           echo "rust_pins=$rust_pins myc_pins=$myc_pins"
+          # Dual-umbrella split (2026-07-21): this repo pins Rust only.
+          # Native *-myc pins live in tzervas/mycelium-lang-myc.
           test "$rust_pins" -eq 45
-          test "$myc_pins" -eq 46
-      - name: Integration-check apex components (pulls the whole pinned Rust graph)
+          test "$myc_pins" -eq 0
+
+  integration:
+    name: apex cargo check (self-hosted)
+    needs: lock-format
+    runs-on: [self-hosted, linux, x64, podman, large]
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Integration-check apex components
         run: |
-          set -eu
+          set -euo pipefail
           mkdir -p _it
-          for apex in mycelium-std-conformance mycelium-cli mycelium-lint mycelium-check mycelium-bench mycelium-fmt mycelium-doc mycelium-sec mycelium-build mycelium-transpile mycelium-std-sys-host mycelium-std-fmt mycelium-std-math mycelium-std-spore mycelium-std-cmp mycelium-std-collections mycelium-std-dense mycelium-std-fs mycelium-std-io mycelium-std-iter mycelium-std-rand mycelium-std-text mycelium-std-error; do
+          for apex in mycelium-std-conformance mycelium-cli mycelium-lint mycelium-check \
+            mycelium-bench mycelium-fmt mycelium-doc mycelium-sec mycelium-build \
+            mycelium-transpile mycelium-std-sys-host mycelium-std-fmt mycelium-std-math \
+            mycelium-std-spore mycelium-std-cmp mycelium-std-collections mycelium-std-dense \
+            mycelium-std-fs mycelium-std-io mycelium-std-iter mycelium-std-rand \
+            mycelium-std-text mycelium-std-error; do
             rev=$(grep -E "^${apex}=" components.lock | sed -E 's/^[a-z0-9-]+=([0-9a-f]{40}).*/\1/')
             test -n "$rev"
-            git clone -q "https://github.com/tzervas/${apex}" "_it/${apex}"
+            if [ ! -d "_it/${apex}/.git" ]; then
+              git clone -q --depth 1 "https://github.com/tzervas/${apex}" "_it/${apex}" || \
+                git clone -q "https://github.com/tzervas/${apex}" "_it/${apex}"
+            fi
+            git -C "_it/${apex}" fetch -q --depth 1 origin "$rev" 2>/dev/null || \
+              git -C "_it/${apex}" fetch -q origin "$rev"
             git -C "_it/${apex}" checkout -q "$rev"
             (cd "_it/${apex}" && cargo check -q)
             echo "OK ${apex}@${rev}"
