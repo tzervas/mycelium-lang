@@ -35,7 +35,7 @@ jobs:
   integration:
     name: apex cargo check (self-hosted)
     needs: lock-format
-    runs-on: [self-hosted, linux, x64, podman, large]
+    runs-on: [self-hosted, linux, x64, podman]
     timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
