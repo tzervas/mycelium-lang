@@ -68,31 +68,16 @@ jobs:
           - id: linux-x64-host
             runs_on: [self-hosted, linux, x64, podman]
             mode: native
-          - id: ubuntu-24.04-x64
-            runs_on: [self-hosted, linux, x64, podman]
-            mode: container
-            image: docker.io/library/ubuntu:24.04
-            draw_os: ubuntu-24.04
-            draw_arch: x64
-          - id: ubuntu-22.04-x64
-            runs_on: [self-hosted, linux, x64, podman]
-            mode: container
-            image: docker.io/library/ubuntu:22.04
-            draw_os: ubuntu-22.04
-            draw_arch: x64
-          - id: debian-bookworm-x64
-            runs_on: [self-hosted, linux, x64, podman]
-            mode: container
-            image: docker.io/library/rust:1.85-bookworm
-            rust_preinstalled: "1"
-            draw_os: debian-bookworm
-            draw_arch: x64
-          - id: rocky-9-x64
-            runs_on: [self-hosted, linux, x64, podman]
-            mode: container
-            image: docker.io/library/rockylinux:9
-            draw_os: rocky-9
-            draw_arch: x64
+          # The per-distro cells (ubuntu/debian/rocky) previously lived here in `container`
+          # mode via scripts/draw-in-container.sh, which spins up a NESTED podman/docker
+          # container. The fleet runners are themselves podman-spawned containers with no
+          # in-container engine (by design — the fleet manager, tzervas/gha-runner-ctl, spins
+          # runners up VIA podman), so nested draw-in can never run there ("need podman or
+          # docker") — a misimplementation, not a provisioning gap. They are demoted to the
+          # experimental (non-blocking) job below until the fleet registers distro-image
+          # runners so per-distro draw-in runs NATIVELY (no nesting). The native
+          # linux-x64-host cell above is the honest required Linux gate. See
+          # tzervas/gha-runner-ctl and docs/SUPPORT_MATRIX.md.
     steps:
       - uses: actions/checkout@v5
         with:
@@ -166,6 +151,35 @@ jobs:
             rust_preinstalled: "1"
             draw_os: debian-bookworm
             draw_arch: arm64
+          # Per-distro Linux cells: demoted from required (see draw-in-required note).
+          # Still `container` mode here, so they fail non-blocking on engine-less runners
+          # until the fleet provides distro-image runners for native draw-in. Promote back
+          # to draw-in-required (as `mode: native` on distro-labelled runners) once that lands.
+          - id: ubuntu-24.04-x64
+            runs_on: [self-hosted, linux, x64, podman]
+            mode: container
+            image: docker.io/library/ubuntu:24.04
+            draw_os: ubuntu-24.04
+            draw_arch: x64
+          - id: ubuntu-22.04-x64
+            runs_on: [self-hosted, linux, x64, podman]
+            mode: container
+            image: docker.io/library/ubuntu:22.04
+            draw_os: ubuntu-22.04
+            draw_arch: x64
+          - id: debian-bookworm-x64
+            runs_on: [self-hosted, linux, x64, podman]
+            mode: container
+            image: docker.io/library/rust:1.85-bookworm
+            rust_preinstalled: "1"
+            draw_os: debian-bookworm
+            draw_arch: x64
+          - id: rocky-9-x64
+            runs_on: [self-hosted, linux, x64, podman]
+            mode: container
+            image: docker.io/library/rockylinux:9
+            draw_os: rocky-9
+            draw_arch: x64
           - id: macos-gh
             runs_on: macos-latest
             mode: native
