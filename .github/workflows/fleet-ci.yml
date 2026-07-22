@@ -1,5 +1,6 @@
 # Fleet standard CI — self-hosted. Honest status on trunk via Actions badge.
-# See docs/FLEET_STANDARDS.md (or plans/fractal/P26_FLEET_STANDARDS.md).
+# Umbrella / docs-only repos: detect reports success without a second job
+# (ephemeral runners die after one job; multi-job noop was leaving runs "queued").
 name: fleet-ci
 
 on:
@@ -25,13 +26,12 @@ jobs:
       python: ${{ steps.d.outputs.python }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - id: d
         run: |
           set -euo pipefail
           rust=false; python=false
-          # Real Rust crate or non-empty workspace members only.
-          # Empty virtual workspaces (members = []) must not enable cargo jobs.
-          # Ignore comments (e.g. "# Future: members = [\"crates/...\"]").
           if [ -f Cargo.toml ]; then
             if grep -qE '^\[package\]' Cargo.toml; then
               rust=true
@@ -47,6 +47,10 @@ jobs:
           echo "rust=$rust" >> "$GITHUB_OUTPUT"
           echo "python=$python" >> "$GITHUB_OUTPUT"
           echo "Detected rust=$rust python=$python"
+          if [ "$rust" != true ] && [ "$python" != true ]; then
+            echo "No Cargo.toml / pyproject detected — umbrella/docs success (single-job path)."
+            echo "Add stack files or a product-specific CI job for real coverage."
+          fi
 
   rust:
     name: cargo check/test
@@ -55,6 +59,8 @@ jobs:
     runs-on: [self-hosted, linux, x64, podman]
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - name: cargo check
         run: cargo check --workspace --all-targets
       - name: cargo test
@@ -67,6 +73,8 @@ jobs:
     runs-on: [self-hosted, linux, x64, podman]
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - name: Install uv
         uses: astral-sh/setup-uv@v5
         with:
@@ -94,13 +102,3 @@ jobs:
           else
             echo "no tests/ directory — skip"
           fi
-
-  noop:
-    name: no stack detected
-    needs: detect
-    if: needs.detect.outputs.rust != 'true' && needs.detect.outputs.python != 'true'
-    runs-on: [self-hosted, linux, x64, podman]
-    steps:
-      - run: |
-          echo "No Cargo.toml / pyproject detected. fleet-ci reports success with no gates."
-          echo "Add stack files or a product-specific CI job for real coverage."
