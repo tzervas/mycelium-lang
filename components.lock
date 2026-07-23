@@ -3,6 +3,14 @@
 # archive_main=aad96b7a425710db5e91094d4fc2ca21a129e41a (the seed baseline; unchanged)
 # Rust component pins: rev + content hash (git tree hash of the pinned rev) — all 45 verified
 # buildable (fmt/clippy/test green standalone) at these revs. No self-pin by design.
+# 2026-07-23: that claim was previously ASPIRATIONAL, not measured. The first full-scope draw-in
+# (all 45 pins, MODE=check+test, FAIL_FAST=0) returned ok=44 fail=1: mycelium-fmt's conformance
+# test resolved fixtures through a monorepo-era sibling path (../mycelium-proj/tests/fixtures), so
+# it passed only where a sibling checkout happened to exist and could never pass standalone. The
+# red `ci` run on main caught it at a 9-pin PIN_LIMIT slice. Fixed in mycelium-fmt#5 and re-pinned
+# below; the claim is now measured rather than asserted — 44 verified at these revs in that sweep,
+# mycelium-fmt verified at its new rev. Keep it that way: re-run the full sweep before editing
+# this header, and do not restate the guarantee for pins the gate has not actually exercised.
 # Dual-umbrella split (2026-07-21): *-myc pins moved to tzervas/mycelium-lang-myc.
 # C5 re-pin (course-correction Phase C, 2026-07-18): 43 repos advanced to the AX-core train
 # (monorepo delta archive..fff42708 propagated + lockstep re-pin; cli-common + std-sys
@@ -15,7 +23,7 @@ mycelium-cli-common=c673fafdd1bcecb713e3560689af6ab152033867 tree=c6fc7df3db94db
 mycelium-codegen=505448cbfb5553a34aca726f0d1b884981a83631 tree=4794b9466fe73027f81e0520d3fe9e8295a9b3c6
 mycelium-core=46d2515cbd86d2ae4d1365f4adcd2796737e9f0b tree=84ffeb7ccf5e35a6129618688e3af507fc9e27ee
 mycelium-doc=22346d3c1e4bb17b14c4275e60efb04704c22319 tree=f196962d74465984a1d0f72d712d7082df126afa
-mycelium-fmt=8dcb0f8081ff8d0f1344d9b4017a52c77b599c1b tree=949e9ad0e450deb4bca28da8cd1b89259c6f4d83
+mycelium-fmt=948bb447d0651da8a19c9b17ebae06df96abd183 tree=c17e3e4770d75465afd9429444469c909b3d61ef
 mycelium-l1=2b92f54349eb0d4f67e32e983874df76908b9ab6 tree=da5985065541c574e620066103886463606abce6
 mycelium-lint=2c6c86bbdd3e2c7abf9bfc0b81e7924279e9e712 tree=d5e6b2edc3d791dfe86ad41c1549d330cb81afa7
 mycelium-lsp=ba86f11ef1b33bdd091e897f6549fb87058445fc tree=a96f4d403cf1cd5df7d38480ab18879669dbde69
