@@ -22,6 +22,12 @@ gap-closure all target **those repos**.
 | **E. Dual-mode surface** | Where cert applies: honest `fast` vs `certified` paths (ADR-032 / RFC-0034) |
 | **F. Native twin** | `*-myc` pin exists; DELIVERY honesty recorded (Declared until validated) |
 
+There is deliberately **no documentation gate** in A–F today. The measured cost of
+that omission is recorded in **[DOCS_GAP_CATALOG.md](DOCS_GAP_CATALOG.md)** —
+44/46 READMEs are still the unmodified extraction stub, and six crates holding 48%
+of the fleet's public surface have no crate-level `//!` docs. A proposed **gate G
+(documentation)** is described there and is **not yet adopted**.
+
 Umbrella **draw-in** = A+B over **all** lock pins, on each required OS/arch cell.
 
 ```bash
