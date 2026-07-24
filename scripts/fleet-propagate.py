@@ -168,7 +168,7 @@ def compute_waves(state: dict) -> tuple[dict[str, int], dict[str, list]]:
 
 # --------------------------------------------------------------- invariant
 
-def check_invariant(state: dict) -> int:
+def check_invariant(state: dict, out=None) -> int:
     """Every sibling must be pinned at exactly ONE rev across the whole fleet.
 
     Cargo treats the same git URL at two different revs as two distinct source
@@ -181,6 +181,7 @@ def check_invariant(state: dict) -> int:
     sibling at two revs, because a dependency's own bump commit has not landed
     yet.
     """
+    out = out or sys.stdout
     seen: dict[str, set[str]] = defaultdict(set)
     where: dict[tuple[str, str], list[str]] = defaultdict(list)
     for r, s in state.items():
@@ -189,17 +190,17 @@ def check_invariant(state: dict) -> int:
                 seen[dep].add(rev)
                 where[(dep, rev)].append(r)
     conflicts = {d: v for d, v in seen.items() if len(v) > 1}
-    print(f"sibling deps referenced fleet-wide : {len(seen)}")
-    print(f"deps pinned at >1 distinct rev     : {len(conflicts)}")
+    print(f"sibling deps referenced fleet-wide : {len(seen)}", file=out)
+    print(f"deps pinned at >1 distinct rev     : {len(conflicts)}", file=out)
     for dep, revs in sorted(conflicts.items()):
-        print(f"  CONFLICT {dep}:")
+        print(f"  CONFLICT {dep}:", file=out)
         for rev in sorted(revs):
-            print(f"    {rev[:8]}  <- {', '.join(sorted(where[(dep, rev)]))}")
+            print(f"    {rev[:8]}  <- {', '.join(sorted(where[(dep, rev)]))}", file=out)
     if conflicts:
         print("\nA sibling pinned at two revs puts two copies of that crate in one "
-              "cargo graph.\nThis must be resolved before propagating.")
+              "cargo graph.\nThis must be resolved before propagating.", file=out)
         return 1
-    print("OK — single-version invariant holds.")
+    print("OK — single-version invariant holds.", file=out)
     return 0
 
 
@@ -213,7 +214,7 @@ def run(cmd: list[str], cwd: str | None = None, check: bool = True) -> subproces
 
 
 def apply_repo(repo: str, need: list[dict], state: dict, branch: str,
-               train: str, dry: bool) -> str | None:
+               train: str, dry: bool, automerge: bool = False) -> str | None:
     """Clone, rewrite sibling revs, conventional-commit, push, open a PR."""
     tmp = tempfile.mkdtemp(prefix=f"prop-{repo}-")
     dest = os.path.join(tmp, repo)
@@ -271,8 +272,26 @@ requirements, features, or non-sibling dependencies are touched.
     }
     pf = os.path.join(tmp, "pr.json")
     json.dump(pr, open(pf, "w"))
-    url = gh("--method", "POST", f"repos/{OWNER}/{repo}/pulls", "--input", pf, "--jq", ".html_url")
-    return url or "(PR creation failed)"
+    created = gh("--method", "POST", f"repos/{OWNER}/{repo}/pulls", "--input", pf,
+                 "--jq", '"\\(.number) \\(.html_url)"')
+    if not created:
+        return "(PR creation failed)"
+    number, _, url = created.partition(" ")
+
+    if automerge:
+        # Auto-merge is GraphQL-only; `gh pr merge --auto` wraps it. The PR then
+        # merges itself once that repo's own required checks pass — the checks stay
+        # the gate, this only removes the human round-trip.
+        r = subprocess.run(
+            ["gh", "pr", "merge", number, "--repo", f"{OWNER}/{repo}", "--auto", "--squash"],
+            capture_output=True, text=True)
+        if r.returncode != 0:
+            # Never silent: a failure to arm auto-merge must be visible, not assumed.
+            print(f"     WARNING: auto-merge not armed on {repo}#{number}: "
+                  f"{(r.stderr or r.stdout).strip().splitlines()[:1]}", file=sys.stderr)
+        else:
+            url += "  [auto-merge armed]"
+    return url
 
 
 # ---------------------------------------------------------------------- main
@@ -288,6 +307,12 @@ def main() -> int:
     ap.add_argument("--branch", default="", help="branch name to create (default: chore/fleet-propagate)")
     ap.add_argument("--write", action="store_true", help="lock: write components.lock in place")
     ap.add_argument("--dry-run", action="store_true", help="apply: do everything except commit/push/PR")
+    ap.add_argument("--automerge", action="store_true",
+                    help="apply: arm GitHub auto-merge so each PR merges itself once its "
+                         "own required checks pass")
+    ap.add_argument("--max-prs", type=int, default=0,
+                    help="apply: hard cap on PRs opened in one run (0 = no cap). CI safety valve.")
+    ap.add_argument("--json", action="store_true", help="plan: emit machine-readable summary")
     ap.add_argument("--state", default="", help="reuse a cached state json from a previous plan")
     args = ap.parse_args()
 
@@ -313,12 +338,32 @@ def main() -> int:
         return check_invariant(state)
 
     if args.cmd == "plan":
-        rc = check_invariant(state)
+        rc = check_invariant(state, out=sys.stderr if args.json else sys.stdout)
         if rc:
             print("\nrefusing to plan against an inconsistent fleet — fix the "
                   "conflicts above first.", file=sys.stderr)
             return rc
         stale = [r for r in repos if pins[r]["rev"] != state[r]["target"]]
+
+        if args.json:
+            # Machine-readable so CI can branch on fixpoint instead of scraping text.
+            maxw_j = max(wave.values()) if wave else 0
+            summary = {
+                "ref": args.ref,
+                "pins_total": len(repos),
+                "pins_stale": len(stale),
+                "stale": {r: {"from": pins[r]["rev"], "to": state[r]["target"]} for r in stale},
+                "waves_required": maxw_j + 1,
+                "total_edits": sum(len(v) for v in edits.values()),
+                "repos_needing_pr": sum(1 for v in edits.values() if v),
+                "next_wave": sorted(r for r in repos if wave.get(r) == 1 and edits.get(r)),
+                # the two states CI cares about
+                "propagation_complete": not any(edits.values()),
+                "lock_in_sync": not stale,
+            }
+            print(json.dumps(summary, indent=1))
+            return 0
+
         print(f"\n=== LOCK PIN DRIFT (components.lock vs '{args.ref}') ===")
         print(f"pins total       : {len(repos)}")
         print(f"pins up to date  : {len(repos) - len(stale)}")
@@ -391,11 +436,16 @@ cached one — a cached state will pin revs that no longer exist as tips.""")
     if not members:
         print(f"wave {args.wave}: nothing to do")
         return 0
+    if args.max_prs and len(members) > args.max_prs:
+        print(f"wave {args.wave}: {len(members)} repo(s), capping at --max-prs={args.max_prs}; "
+              f"deferring {len(members) - args.max_prs} to the next run: "
+              f"{', '.join(members[args.max_prs:])}")
+        members = members[:args.max_prs]
     print(f"wave {args.wave}: {len(members)} repo(s)")
     for r in members:
         print(f"  -> {r}")
         try:
-            url = apply_repo(r, edits[r], state, branch, train, args.dry_run)
+            url = apply_repo(r, edits[r], state, branch, train, args.dry_run, args.automerge)
             print(f"     {url or '(no change)'}")
         except (RuntimeError, OSError) as exc:
             print(f"     FAILED: {exc}", file=sys.stderr)

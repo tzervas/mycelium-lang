@@ -114,6 +114,69 @@ whenever a plan needs more than one wave.
 - Resolves from live GitHub state, so a stale local checkout cannot produce a
   wrong plan.
 
+## Automation
+
+Running the CLI by hand still costs 9 supervised rounds. The workflow set makes
+the cascade self-driving.
+
+### `.github/workflows/fleet-propagate.yml` (umbrella)
+
+| Trigger | Purpose |
+|---|---|
+| `repository_dispatch` (`component-advanced`) | instant — a component just advanced |
+| `schedule` (`17 */2 * * *`) | backstop, so a missed dispatch cannot strand the fleet |
+| `workflow_dispatch` | manual, with `dry_run` / `max_prs` / `automerge` / `train` |
+
+Each run does exactly one thing:
+
+1. **Refuse** loudly if `FLEET_PROPAGATE_TOKEN` is absent. A missing token must
+   not degrade into a silent no-op that reads as "fleet is in sync".
+2. **`plan --json`** — resolve live state, verify the single-version invariant,
+   emit `propagation_complete` / `lock_in_sync`.
+3. If not complete: **`apply --wave 1 --automerge`** — open that wave's PRs with
+   auto-merge armed.
+4. If complete but the lock is stale: **`lock --write`** and open the re-pin PR.
+
+**Why one wave per run is the whole trick.** Auto-merge means a wave's PRs merge
+themselves once each repo's own required checks pass. Merging moves those repos'
+HEADs, so the *next* run resolves fresh state and finds the following wave ready.
+The 9-wave cascade therefore runs to completion with no human between waves, and
+the target revs are always freshly resolved — which is exactly the correctness
+trap the manual process has to remember and this does not.
+
+`concurrency: fleet-propagate` with `cancel-in-progress: false` prevents two runs
+resolving different targets and opening PRs that pin a sibling at two revs.
+
+**Auto-merge does not weaken any gate.** It removes the human round-trip, not the
+checks: each PR still has to satisfy its own repo's `protec-main` required
+status checks, and a red check simply parks the PR.
+
+### `templates/fleet-notify.yml` (component repos, optional)
+
+Fires `repository_dispatch` at the umbrella on push to `main` **and on release
+publish**, so propagation starts in seconds rather than up to two hours. Install
+with `scripts/rollout-fleet-notify.sh` (dry-run by default, `APPLY=1` to open the
+PRs; idempotent — it skips repos that already have it).
+
+This is **optional and costs one `FLEET_DISPATCH_TOKEN` secret per repo**. If the
+secret is missing the job warns and exits 0, because the umbrella's schedule
+still catches the advance: a missing secret costs latency, not correctness. If
+you would rather hold exactly one credential fleet-wide, skip the rollout
+entirely and rely on the schedule.
+
+### Prerequisites
+
+| Item | Status |
+|---|---|
+| `allow_auto_merge` on all 46 component repos | **done** |
+| `delete_branch_on_merge` on all 46 | **done** (propagation creates many branches) |
+| `FLEET_PROPAGATE_TOKEN` on `mycelium-lang` | **operator action** — `contents:write` + `pull_requests:write` across `tzervas/mycelium-*` |
+| `FLEET_DISPATCH_TOKEN` per component | optional, only for the instant trigger |
+
+The workflow-scoped `GITHUB_TOKEN` cannot write to other repositories, which is
+why the cross-repo token is unavoidable. It is also why the umbrella holds it:
+one credential in one repo, rather than 46.
+
 ## Sequencing note — do not propagate first
 
 Three execution-path landings (**A1** host-op registry in `mycelium-runtime`,
