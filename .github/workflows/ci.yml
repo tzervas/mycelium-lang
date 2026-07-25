@@ -14,6 +14,10 @@ on:
         description: "Optional pin limit for smoke (empty = all)"
         required: false
         default: ""
+      full_os_matrix:
+        description: "Also run the non-Ubuntu experimental OS/arch cells"
+        type: boolean
+        default: false
   push:
     branches: [main]
   pull_request:
@@ -130,6 +134,26 @@ jobs:
   draw-in-experimental:
     name: experimental ${{ matrix.id }}
     needs: lock-format
+    # UBUNTU-FIRST (2026-07-24). These cells no longer run on push/PR.
+    #
+    # Every Linux cell here is `mode: container`, which spins a NESTED podman/docker
+    # inside a fleet runner that is itself a podman container with no engine — so
+    # they cannot pass, by construction (see the draw-in-required note above). They
+    # were 6 permanently-red checks on every PR, costing wall-clock and hiding real
+    # signal, while telling us nothing we did not already know.
+    #
+    # Ubuntu is NOT dropped: the required `linux-x64-host` cell runs natively on the
+    # fleet host, which is Ubuntu 24.04 LTS. That IS the Ubuntu gate, and it is green.
+    #
+    # macos-gh / windows-gh do pass, but are extra while the port is still landing on
+    # self-hosted Linux. They stay reachable on the weekly schedule and on demand.
+    #
+    # Re-enable per cell by promoting it to `draw-in-required` as `mode: native` once
+    # the fleet registers distro-image runners. The periodic full-OS suite is intended
+    # to live in mycelium-lang-myc.
+    if: >-
+      github.event_name == 'schedule' ||
+      (github.event_name == 'workflow_dispatch' && inputs.full_os_matrix)
     runs-on: ${{ matrix.runs_on }}
     timeout-minutes: 180
     continue-on-error: true
