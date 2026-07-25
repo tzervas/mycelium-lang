@@ -83,6 +83,19 @@ jobs:
             exit 1
           fi
 
+      # apply_repo / lock re-pin use plain `git push` over HTTPS. actions/checkout wires
+      # GITHUB_TOKEN (contents:read here), which cannot write sibling repos or even push a
+      # branch on this one. Point git's credential helper at the fleet token so push/PR
+      # creation actually authenticate — without this, apply silently failed at push time
+      # under the previous fail-open exit codes.
+      - name: Authenticate git + gh with the fleet token
+        env:
+          GH_TOKEN: ${{ secrets.FLEET_PROPAGATE_TOKEN }}
+        run: |
+          set -eu
+          gh auth setup-git
+          gh auth status
+
       - name: Plan (read-only) and check the single-version invariant
         id: plan
         env:
@@ -118,14 +131,30 @@ jobs:
         if: steps.plan.outputs.propagation_complete == 'False'
         env:
           GH_TOKEN: ${{ secrets.FLEET_PROPAGATE_TOKEN }}
+          # workflow_dispatch inputs are empty strings on schedule/repository_dispatch.
+          MAX_PRS: ${{ inputs.max_prs || '12' }}
+          DRY_RUN: ${{ inputs.dry_run || false }}
+          AUTOMERGE: ${{ inputs.automerge || true }}
+          TRAIN: ${{ inputs.train || '' }}
         run: |
           set -eu
-          args="--wave 1 --max-prs ${{ inputs.max_prs || '12' }}"
-          [ "${{ inputs.dry_run }}" = "true" ] && args="$args --dry-run"
-          [ "${{ inputs.automerge }}" != "false" ] && args="$args --automerge"
-          [ -n "${{ inputs.train }}" ] && args="$args --train ${{ inputs.train }}"
-          echo "fleet-propagate.py apply $args"
-          python3 scripts/fleet-propagate.py apply $args
+          # Build argv as a bash array — never unquoted `$args` (word-split / injection on
+          # free-text `train` labels). Empty schedule inputs fall back via the env defaults.
+          cmd=(python3 scripts/fleet-propagate.py apply --wave 1 --max-prs "${MAX_PRS}")
+          if [ "${DRY_RUN}" = "true" ]; then
+            cmd+=(--dry-run)
+          fi
+          # Default automerge ON (self-driving waves); explicit false disables.
+          if [ "${AUTOMERGE}" != "false" ]; then
+            cmd+=(--automerge)
+          fi
+          if [ -n "${TRAIN}" ]; then
+            cmd+=(--train "${TRAIN}")
+          fi
+          printf 'fleet-propagate.py apply:';
+          printf ' %q' "${cmd[@]}"
+          printf '\n'
+          "${cmd[@]}"
 
       # Only once every sibling edge has settled does re-pinning the umbrella
       # describe a real, buildable fleet state.

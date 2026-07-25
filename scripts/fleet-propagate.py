@@ -56,39 +56,80 @@ RE_LOCK_PIN = re.compile(r"^(?P<name>[a-z0-9-]+)=(?P<rev>[0-9a-f]{40})(?:\s+tree
 
 # ---------------------------------------------------------------- github I/O
 
-def gh(*args: str) -> str:
-    """Call `gh api` and return stdout, or "" on failure."""
+class GhError(RuntimeError):
+    """A `gh api` call failed. Fail closed — never invent empty revs/trees."""
+
+
+def gh(*args: str, allow_empty: bool = False) -> str:
+    """Call `gh api` and return stdout.
+
+    Fail-closed: non-zero exit, timeout, or OS error raises [`GhError`] rather than
+    returning ``""``. Empty stdout is only tolerated when ``allow_empty=True``
+    (e.g. a jq filter that legitimately yields no lines). Silent empty returns
+    previously let a rate-limit or auth failure look like "fleet is in sync".
+    """
     try:
-        r = subprocess.run(["gh", "api", *args], capture_output=True, text=True, timeout=90)
-        return r.stdout.strip() if r.returncode == 0 else ""
-    except (OSError, subprocess.SubprocessError):
-        return ""
+        r = subprocess.run(
+            ["gh", "api", *args], capture_output=True, text=True, timeout=90
+        )
+    except (OSError, subprocess.SubprocessError) as exc:
+        raise GhError(f"gh api {' '.join(args)}: {exc}") from exc
+    if r.returncode != 0:
+        err = (r.stderr or r.stdout or "").strip().splitlines()
+        detail = err[0] if err else f"exit {r.returncode}"
+        raise GhError(f"gh api {' '.join(args)}: {detail}")
+    out = r.stdout.strip()
+    if not out and not allow_empty:
+        raise GhError(f"gh api {' '.join(args)}: empty response (auth/rate-limit/ref?)")
+    return out
 
 
 def head_of(repo: str, ref: str) -> str:
-    return gh(f"repos/{OWNER}/{repo}/commits/{ref}", "--jq", ".sha")
+    sha = gh(f"repos/{OWNER}/{repo}/commits/{ref}", "--jq", ".sha")
+    if not re.fullmatch(r"[0-9a-f]{40}", sha):
+        raise GhError(f"head_of({repo}, {ref}): not a 40-char sha: {sha!r}")
+    return sha
 
 
 def tree_of(repo: str, rev: str) -> str:
-    return gh(f"repos/{OWNER}/{repo}/commits/{rev}", "--jq", ".commit.tree.sha")
+    tree = gh(f"repos/{OWNER}/{repo}/commits/{rev}", "--jq", ".commit.tree.sha")
+    if not re.fullmatch(r"[0-9a-f]{40}", tree):
+        raise GhError(f"tree_of({repo}, {rev[:8]}): not a 40-char sha: {tree!r}")
+    return tree
 
 
 def file_at(repo: str, path: str, ref: str) -> str | None:
-    """Fetch a text file at a ref via the contents API."""
+    """Fetch a text file at a ref via the contents API.
+
+    Missing file → ``None``. Transport/API failure → raises [`GhError`] (fail closed).
+    """
     import base64
-    raw = gh(f"repos/{OWNER}/{repo}/contents/{path}?ref={ref}", "--jq", ".content")
+    try:
+        raw = gh(f"repos/{OWNER}/{repo}/contents/{path}?ref={ref}", "--jq", ".content")
+    except GhError as exc:
+        # 404 for a path that is not present is expected for some layouts; re-raise
+        # anything that is not a not-found so rate limits cannot look like "no file".
+        msg = str(exc).lower()
+        if "404" in msg or "not found" in msg:
+            return None
+        raise
     if not raw:
         return None
     try:
-        return base64.b64decode(raw).decode("utf-8", "replace")
-    except (ValueError, TypeError):
-        return None
+        # Contents API may wrap base64 with newlines; strip whitespace before decode.
+        return base64.b64decode("".join(raw.split())).decode("utf-8", "replace")
+    except (ValueError, TypeError) as exc:
+        raise GhError(f"file_at({repo}, {path}@{ref}): base64 decode failed: {exc}") from exc
 
 
 def manifests_at(repo: str, ref: str) -> list[str]:
     """Paths of every Cargo.toml in the repo at ``ref`` (via the git tree API)."""
-    out = gh(f"repos/{OWNER}/{repo}/git/trees/{ref}?recursive=1",
-             "--jq", '.tree[] | select(.path | endswith("Cargo.toml")) | .path')
+    out = gh(
+        f"repos/{OWNER}/{repo}/git/trees/{ref}?recursive=1",
+        "--jq",
+        '.tree[] | select(.path | endswith("Cargo.toml")) | .path',
+        allow_empty=True,
+    )
     return [p for p in out.splitlines() if p and "/target/" not in p]
 
 
@@ -107,12 +148,32 @@ def read_lock() -> tuple[list[str], dict[str, dict]]:
 # ----------------------------------------------------------------- the graph
 
 def build_state(repos: list[str], ref: str, verbose: bool = True) -> dict:
-    """Resolve each repo's target rev and its sibling dependency edges."""
+    """Resolve each repo's target rev and its sibling dependency edges.
+
+    Fail-closed: if the requested ``ref`` is missing on a repo we try ``main``,
+    but an empty/failed resolution raises — never invents a blank target rev
+    that would make every pin look "stale→empty" or every pin look "in sync".
+    """
     state: dict[str, dict] = {}
     for i, r in enumerate(repos, 1):
         if verbose:
             print(f"  [{i:>2}/{len(repos)}] {r}", file=sys.stderr)
-        target = head_of(r, ref) or head_of(r, "main")
+        try:
+            target = head_of(r, ref)
+        except GhError as primary:
+            if ref == "main":
+                raise
+            try:
+                target = head_of(r, "main")
+                print(
+                    f"  note: {r} has no '{ref}', falling back to main ({target[:8]})",
+                    file=sys.stderr,
+                )
+            except GhError as fallback:
+                raise GhError(
+                    f"cannot resolve target for {r} at '{ref}' or 'main': "
+                    f"{primary}; fallback: {fallback}"
+                ) from fallback
         deps: dict[str, set[str]] = defaultdict(set)
         files: dict[str, str] = {}
         for path in manifests_at(r, target):
@@ -272,11 +333,16 @@ requirements, features, or non-sibling dependencies are touched.
     }
     pf = os.path.join(tmp, "pr.json")
     json.dump(pr, open(pf, "w"))
-    created = gh("--method", "POST", f"repos/{OWNER}/{repo}/pulls", "--input", pf,
-                 "--jq", '"\\(.number) \\(.html_url)"')
-    if not created:
-        return "(PR creation failed)"
+    try:
+        created = gh(
+            "--method", "POST", f"repos/{OWNER}/{repo}/pulls", "--input", pf,
+            "--jq", r'"\(.number) \(.html_url)"',
+        )
+    except GhError as exc:
+        raise RuntimeError(f"PR creation failed for {repo}: {exc}") from exc
     number, _, url = created.partition(" ")
+    if not number.isdigit() or not url:
+        raise RuntimeError(f"PR creation returned unparseable payload for {repo}: {created!r}")
 
     if automerge:
         # Auto-merge is GraphQL-only; `gh pr merge --auto` wraps it. The PR then
@@ -287,6 +353,7 @@ requirements, features, or non-sibling dependencies are touched.
             capture_output=True, text=True)
         if r.returncode != 0:
             # Never silent: a failure to arm auto-merge must be visible, not assumed.
+            # Do not treat this as a hard apply failure — the PR exists; checks remain the gate.
             print(f"     WARNING: auto-merge not armed on {repo}#{number}: "
                   f"{(r.stderr or r.stdout).strip().splitlines()[:1]}", file=sys.stderr)
         else:
@@ -415,8 +482,19 @@ cached one — a cached state will pin revs that no longer exist as tips.""")
             if rev == m.group("rev"):
                 out.append(ln)
                 continue
-            tree = tree_of(name, rev) or m.group("tree") or ""
-            out.append(f"{name}={rev}" + (f" tree={tree}" if tree else ""))
+            # Fail closed: never keep a stale tree= hash for a new rev (draw-in would
+            # either false-pass or false-fail against the wrong tree). Require a live tree.
+            try:
+                tree = tree_of(name, rev)
+            except GhError as exc:
+                print(
+                    f"error: cannot resolve tree for {name}@{rev[:8]}: {exc}\n"
+                    f"       refusing to write a lock pin without a matching tree hash "
+                    f"(never reuse the previous tree= — G2/fail-closed)",
+                    file=sys.stderr,
+                )
+                return 1
+            out.append(f"{name}={rev} tree={tree}")
             n += 1
         text = "\n".join(out) + "\n"
         if args.write:
@@ -442,15 +520,30 @@ cached one — a cached state will pin revs that no longer exist as tips.""")
               f"{', '.join(members[args.max_prs:])}")
         members = members[:args.max_prs]
     print(f"wave {args.wave}: {len(members)} repo(s)")
+    failures: list[str] = []
     for r in members:
         print(f"  -> {r}")
         try:
             url = apply_repo(r, edits[r], state, branch, train, args.dry_run, args.automerge)
             print(f"     {url or '(no change)'}")
-        except (RuntimeError, OSError) as exc:
+        except (RuntimeError, OSError, GhError) as exc:
             print(f"     FAILED: {exc}", file=sys.stderr)
+            failures.append(r)
+    if failures:
+        print(
+            f"error: apply failed for {len(failures)}/{len(members)} repo(s): "
+            f"{', '.join(failures)}",
+            file=sys.stderr,
+        )
+        return 1
     return 0
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    try:
+        sys.exit(main())
+    except GhError as exc:
+        # Top-level: plan/check/lock API failures must fail the process (CI), never
+        # report a false "fleet is in sync" / empty plan.
+        print(f"error: {exc}", file=sys.stderr)
+        sys.exit(1)

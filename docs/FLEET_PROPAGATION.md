@@ -4,6 +4,24 @@
 [`scripts/fleet-propagate.py`](../scripts/fleet-propagate.py) resolving live
 GitHub state, and are reproducible with `python3 scripts/fleet-propagate.py plan`.
 
+## Fail-closed contract (load-bearing)
+
+Propagation writes across the fleet. A quiet no-op that *looks* like
+"already in sync" is worse than a loud failure — it strands the train. The
+tool and workflow therefore:
+
+| Failure | Behavior |
+|---|---|
+| Missing `FLEET_PROPAGATE_TOKEN` | workflow exits 1 before any plan |
+| `gh api` auth/rate-limit/transport error | process exits 1 (never empty revs) |
+| Cannot resolve a repo HEAD / tree SHA | refuse to plan or write lock |
+| `apply` cannot push / open a PR | non-zero exit; lists failed repos |
+| `lock` cannot fetch the new `tree=` | refuse to write (never reuse stale tree) |
+| Auto-merge arming fails | WARNING only — PR still exists; checks gate merge |
+
+`git push` uses the fleet token via `gh auth setup-git` (not the
+workflow-scoped `GITHUB_TOKEN`, which is `contents: read` only here).
+
 ## The gap this closes
 
 `umbrella-draw-in.sh` and `component-draw-in.sh` **validate** the pins in
