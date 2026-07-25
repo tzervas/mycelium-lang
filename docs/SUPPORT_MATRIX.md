@@ -4,6 +4,33 @@ This umbrella’s **draw-in** and **release** gates expand OS/arch coverage over
 **Honesty:** only tiers marked **required** block a release. Everything else is
 **experimental** (reported, non-blocking) or **planned** (docs only).
 
+## Ubuntu-first (2026-07-24) — experimental cells are off the PR path
+
+`status=experimental` cells **no longer run on push or pull_request.** They run on
+the weekly schedule, or on demand via `workflow_dispatch` with
+`full_os_matrix=true`.
+
+Why, measured rather than asserted: every experimental **Linux** cell is
+`mode: container`, which spins a *nested* podman/docker inside a fleet runner that
+is itself a podman container with no engine. Those 6 cells
+(`ubuntu-24.04-x64`, `ubuntu-22.04-x64`, `debian-bookworm-x64`, `rocky-9-x64`,
+`fedora-x64`, `linux-arm64-emu`) therefore **cannot pass by construction** — the
+identical 6 fail on `main` itself. They were 6 permanently-red checks on every PR,
+spending wall-clock and burying real signal.
+
+**Ubuntu is not dropped.** The **required** `linux-x64-host` cell runs *natively*
+on the fleet host, which is **Ubuntu 24.04.4 LTS**. That is the Ubuntu gate, and it
+is green. The container-mode Ubuntu cells added a second, broken path to the same
+distro.
+
+`macos-gh` and `windows-gh` do pass, but are out of scope while the port is landing
+on self-hosted Linux. They remain on the schedule and on demand.
+
+**Re-enabling:** promote a cell into `draw-in-required` as `mode: native` once the
+fleet registers distro-image runners, so per-distro draw-in runs without nesting.
+The periodic full-OS suite is intended to live in **`mycelium-lang-myc`**, keeping
+the Rust train’s PR path fast.
+
 
 ## Component repos are the unit under test
 
