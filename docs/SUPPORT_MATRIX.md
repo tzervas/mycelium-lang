@@ -4,6 +4,57 @@ This umbrella’s **draw-in** and **release** gates expand OS/arch coverage over
 **Honesty:** only tiers marked **required** block a release. Everything else is
 **experimental** (reported, non-blocking) or **planned** (docs only).
 
+## Ubuntu-first (2026-07-24) — experimental cells are off the PR path
+
+`status=experimental` cells **no longer run on push or pull_request.** They run on
+the weekly schedule, or on demand via `workflow_dispatch` with
+`full_os_matrix=true`.
+
+Why, measured rather than asserted: every experimental **Linux** cell is
+`mode: container`, which spins a *nested* podman/docker inside a fleet runner that
+is itself a podman container with no engine. Those 6 cells
+(`ubuntu-24.04-x64`, `ubuntu-22.04-x64`, `debian-bookworm-x64`, `rocky-9-x64`,
+`fedora-x64`, `linux-arm64-emu`) therefore **cannot pass by construction** — the
+identical 6 fail on `main` itself. They were 6 permanently-red checks on every PR,
+spending wall-clock and burying real signal.
+
+**Ubuntu is not dropped.** The **required** `linux-x64-host` cell runs *natively*
+on the fleet host, which is **Ubuntu 24.04.4 LTS**. That is the Ubuntu gate, and it
+is green. The container-mode Ubuntu cells added a second, broken path to the same
+distro.
+
+`macos-gh` and `windows-gh` do pass, but are out of scope while the port is landing
+on self-hosted Linux. They remain on the schedule and on demand.
+
+**Re-enabling:** promote a cell into `draw-in-required` as `mode: native` once the
+fleet registers distro-image runners, so per-distro draw-in runs without nesting.
+The weekly full-OS suite runs on **`mycelium-lang`** today and is intended to
+extend to **`mycelium-lang-myc`** as the central exhaustive production-tier test
+point, keeping every component repo's PR path fast.
+
+## `draw-in-container.sh` resolves four ways (nested *or* bare)
+
+The cells are no longer structurally red when they do run. The script probes for a
+*working* engine (`podman info` / `docker info`, not just a binary on `PATH`,
+because an engine-less runner can have the binary and still fail) and resolves:
+
+| # | mode | when | result |
+|---|---|---|---|
+| 1 | **NESTED** | a working engine is present | runs the requested image — the only mode that tests the **image** |
+| 2 | **EQUIVALENT** | no engine, host *is* this distro/arch | reports covered; skips a duplicate 45-pin pass (`DEDUPE_HOST_EQUIVALENT=0` to force a run) |
+| 3 | **BARE** | as above, dedupe disabled | runs the draw-in in place — real **distro** coverage, no nesting |
+| 4 | **REFUSE** | no engine, different distro/arch | typed refusal, `exit 0`, neutral — no gate ran and none is claimed |
+
+Case 2 exists because the fleet host **is** Ubuntu 24.04: re-running
+`ubuntu-24.04-x64` bare would duplicate `linux-x64-host` exactly, doubling weekly
+load for identical coverage. Case 4 is deliberately a *refusal* rather than a pass
+or a failure — there is no honest way to test Fedora on Ubuntu without an engine.
+`STRICT_CONTAINER=1` promotes case 4 to a hard failure for callers that require
+genuine nesting.
+
+Being precise about what each mode proves: cases 2 and 3 cover the **distro**;
+only case 1 covers the container **image**.
+
 
 ## Component repos are the unit under test
 
