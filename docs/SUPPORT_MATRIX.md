@@ -28,8 +28,32 @@ on self-hosted Linux. They remain on the schedule and on demand.
 
 **Re-enabling:** promote a cell into `draw-in-required` as `mode: native` once the
 fleet registers distro-image runners, so per-distro draw-in runs without nesting.
-The periodic full-OS suite is intended to live in **`mycelium-lang-myc`**, keeping
-the Rust train’s PR path fast.
+The weekly full-OS suite runs on **`mycelium-lang`** today and is intended to
+extend to **`mycelium-lang-myc`** as the central exhaustive production-tier test
+point, keeping every component repo's PR path fast.
+
+## `draw-in-container.sh` resolves four ways (nested *or* bare)
+
+The cells are no longer structurally red when they do run. The script probes for a
+*working* engine (`podman info` / `docker info`, not just a binary on `PATH`,
+because an engine-less runner can have the binary and still fail) and resolves:
+
+| # | mode | when | result |
+|---|---|---|---|
+| 1 | **NESTED** | a working engine is present | runs the requested image — the only mode that tests the **image** |
+| 2 | **EQUIVALENT** | no engine, host *is* this distro/arch | reports covered; skips a duplicate 45-pin pass (`DEDUPE_HOST_EQUIVALENT=0` to force a run) |
+| 3 | **BARE** | as above, dedupe disabled | runs the draw-in in place — real **distro** coverage, no nesting |
+| 4 | **REFUSE** | no engine, different distro/arch | typed refusal, `exit 0`, neutral — no gate ran and none is claimed |
+
+Case 2 exists because the fleet host **is** Ubuntu 24.04: re-running
+`ubuntu-24.04-x64` bare would duplicate `linux-x64-host` exactly, doubling weekly
+load for identical coverage. Case 4 is deliberately a *refusal* rather than a pass
+or a failure — there is no honest way to test Fedora on Ubuntu without an engine.
+`STRICT_CONTAINER=1` promotes case 4 to a hard failure for callers that require
+genuine nesting.
+
+Being precise about what each mode proves: cases 2 and 3 cover the **distro**;
+only case 1 covers the container **image**.
 
 
 ## Component repos are the unit under test
