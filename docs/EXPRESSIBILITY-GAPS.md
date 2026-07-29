@@ -227,11 +227,12 @@ Collected via `gh issue list --state open` on primary + key std component repos 
 | `mycelium-lang` | 18 | [Epic] Mycelium host-effect & AOT readiness — close all port-blocking gaps | epic, mycelium-readiness | https://github.com/tzervas/mycelium-lang/issues/18 |
 | `mycelium-lang` | 19 | [Tier-1] New phylum: `std-process` — spawn/exec, wait, signals, FIFO | epic, mycelium-readiness | https://github.com/tzervas/mycelium-lang/issues/19 |
 | `mycelium-lang` | 20 | [Tier-2] Config/data codecs: `std-json` (general) + `std-toml` | epic, mycelium-readiness | https://github.com/tzervas/mycelium-lang/issues/20 |
+| `mycelium-lang` | 27 | [Epic] Expressibility gap roadmap — Python ↔ Rust ↔ .myc staged development | epic, mycelium-readiness | https://github.com/tzervas/mycelium-lang/issues/27 |
 | `mycelium-lang-myc` | 1 | Train board: native *-myc components under mycelium-lang-myc | — | https://github.com/tzervas/mycelium-lang-myc/issues/1 |
 | `mycelium-std-io` | 6 | [Epic] Socket-backed `Substrate::from_fd` + general struct JSON codec | epic, mycelium-readiness | https://github.com/tzervas/mycelium-std-io/issues/6 |
 | `mycelium-std-sys` | 6 | [Epic] Real-OS host-effect floor — process/exec, env-mutation, net, + `wild:` registry | epic, mycelium-readiness | https://github.com/tzervas/mycelium-std-sys/issues/6 |
 
-**Count:** 12 open across inventoried repos.  
+**Count:** 13 open (includes this roadmap epic #27) across inventoried repos.  
 **Primary repos with zero open issues:** `mycelium-core`, `mycelium-value`, `mycelium-runtime`, `mycelium-cli`, `mycelium-check`, `mycelium-fmt`, `mycelium-lint`, `mycelium-lsp`, `mycelium-transpile`, `mycelium-build`, `mycelium-proj`, `mycelium-spore`, `mycelium-doc`, `mycelium-sec`, `mycelium-bench`, and most other `std-*` (except `std-io`, `std-sys`).
 
 ### Issue triage (2026-07-29)
