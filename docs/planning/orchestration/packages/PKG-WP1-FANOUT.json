@@ -1,0 +1,73 @@
+{
+  "id": "PKG-WP1-FANOUT",
+  "title": "Merge docs+CI fan-outs then measured re-pin",
+  "wp": "WP-1/WP-2",
+  "priority": "P1",
+  "status": "ready",
+  "hub_issue": "https://github.com/tzervas/mycelium-lang/issues/30",
+  "title_prefix": "train/gap-closure:",
+  "goal": "Land open docs GAP-STATUS and CI fleet tier-label trains, then run measured full draw-in and update components.lock.",
+  "non_goals": [
+    "Language features",
+    "Host ops"
+  ],
+  "surfaces": [
+    "S-ECOSYSTEM-LOCK"
+  ],
+  "lanes": [
+    {
+      "id": "L-DOCS",
+      "repo": "tzervas/mycelium-lang",
+      "role": "implementer",
+      "deliverables": [
+        "Merge/complete PR #26 family members"
+      ],
+      "success_criteria": [
+        "Hub documents member PR list complete"
+      ]
+    },
+    {
+      "id": "L-CI",
+      "repo": "multiple mycelium-*",
+      "role": "ci",
+      "deliverables": [
+        "PR #25 family fleet labels"
+      ],
+      "success_criteria": [
+        "Compile jobs cannot land on micro"
+      ]
+    },
+    {
+      "id": "L-REPIN",
+      "repo": "tzervas/mycelium-lang",
+      "role": "implementer",
+      "depends_on_lanes": [
+        "L-DOCS",
+        "L-CI"
+      ],
+      "deliverables": [
+        "components.lock full draw-in MODE=check+test FAIL_FAST=0"
+      ],
+      "success_criteria": [
+        "ok=45 or documented failures",
+        "header claim measured"
+      ]
+    }
+  ],
+  "blocked_by": [
+    "PKG-WP0-LOCK"
+  ],
+  "unblocks": [
+    "honest tip for WP-4 repin"
+  ],
+  "success_criteria": [
+    "Fan-outs merged",
+    "Measured re-pin commit on umbrella"
+  ],
+  "adversarial_checklist": [
+    "Do not claim buildable without running draw-in",
+    "No PIN_LIMIT silent success"
+  ],
+  "requires_repin": true,
+  "kickoff_prompt": "PACKAGE PKG-WP1-FANOUT: merge docs+CI fan-out trains then measured components.lock re-pin.\nHub #30. Decision: merge-then-repin. Do not start language features. Report draw-in JSONL summary on hub."
+}

@@ -1,0 +1,146 @@
+{
+  "id": "PKG-WP4-TIER0",
+  "title": "Tier-0 wild registry + default host install + CLI bind",
+  "wp": "WP-4",
+  "priority": "P0",
+  "status": "zipping",
+  "hub_issue": "https://github.com/tzervas/mycelium-lang/issues/30",
+  "title_prefix": "train/gap-closure:",
+  "goal": "Make wild { name(args) } execute against registered host ops for a minimal floor (time + entropy), with install path from std-sys-host and CLI bind on myc run. Unblocks all host-effect work.",
+  "non_goals": [
+    "std-net / HTTP",
+    "process spawn (PKG-WP5)",
+    "AOT generalization",
+    "*-myc self-host",
+    "I/O reactor (blocking-hypha only)"
+  ],
+  "surfaces": [
+    "S-HOST-REGISTRY"
+  ],
+  "lanes": [
+    {
+      "id": "L-ZIP",
+      "repo": "tzervas/mycelium-lang",
+      "role": "zipper",
+      "branch_hint": "train/gap-closure-zipper-orchestration",
+      "depends_on_lanes": [],
+      "deliverables": [
+        "surfaces/S-HOST-REGISTRY.md name catalog",
+        "orchestration packages",
+        "no heavy impl"
+      ],
+      "success_criteria": [
+        "Name catalog frozen",
+        "Lane packages ready for parallel kickoff"
+      ]
+    },
+    {
+      "id": "L-RT",
+      "repo": "tzervas/mycelium-runtime",
+      "role": "implementer",
+      "branch_hint": "train/gap-closure-host-call-registry",
+      "depends_on_lanes": [
+        "L-ZIP"
+      ],
+      "deliverables": [
+        "PrimRegistry::register_host/has_host",
+        "host module + install_host_ops",
+        "PR https://github.com/tzervas/mycelium-runtime/pull/11"
+      ],
+      "success_criteria": [
+        "Default with_builtins has zero wild: ops",
+        "After install_host_ops, get(wild:x) works",
+        "cargo test -p mycelium-interp host:: passes"
+      ],
+      "ci": {
+        "depth": "check+test",
+        "ecosystem_lock_ref": "main",
+        "dep_overrides_note": "pin self while co-dev with sys-host"
+      }
+    },
+    {
+      "id": "L-HOST",
+      "repo": "tzervas/mycelium-std-sys-host",
+      "role": "implementer",
+      "branch_hint": "train/gap-closure-install-default-host-ops",
+      "depends_on_lanes": [
+        "L-RT"
+      ],
+      "deliverables": [
+        "feature host-registry",
+        "install_default_host_ops with time_mono_nanos, time_wall_nanos, rand_fill",
+        "PR follows https://github.com/tzervas/mycelium-std-sys-host/pull/7"
+      ],
+      "success_criteria": [
+        "install_default_host_ops registers catalog names",
+        "Integration test: registry has_host after install",
+        "OS failures are explicit errors (G2)"
+      ]
+    },
+    {
+      "id": "L-CLI",
+      "repo": "tzervas/mycelium-cli",
+      "role": "implementer",
+      "branch_hint": "train/gap-closure-cli-install-host",
+      "depends_on_lanes": [
+        "L-HOST"
+      ],
+      "deliverables": [
+        "myc run installs default host ops before eval",
+        "flag or always-on documented for host-capable run",
+        "smoke: myc run program using wild time if surface exposed"
+      ],
+      "success_criteria": [
+        "Without install path, wild still fails loud",
+        "With install, at least one floor op executes end-to-end",
+        "No monorepo path deps"
+      ]
+    },
+    {
+      "id": "L-ADV",
+      "repo": "tzervas/mycelium-lang",
+      "role": "reviewer",
+      "depends_on_lanes": [
+        "L-RT",
+        "L-HOST",
+        "L-CLI"
+      ],
+      "deliverables": [
+        "adversarial review on hub #30"
+      ],
+      "success_criteria": [
+        "Checks name catalog compliance",
+        "Checks never-silent + blocking-hypha docs",
+        "APPROVE only if all three implementer lanes green"
+      ]
+    }
+  ],
+  "blocked_by": [
+    "PKG-WP0-LOCK"
+  ],
+  "unblocks": [
+    "PKG-WP5-PROCESS-CODECS",
+    "PKG-WP6-NET",
+    "ports"
+  ],
+  "success_criteria": [
+    "wild:time_mono_nanos executes via myc run smoke",
+    "Unregistered wild: still explicit error",
+    "Three component PRs merged or merge-ready",
+    "components.lock re-pin scheduled (requires_repin)"
+  ],
+  "adversarial_checklist": [
+    "No new crate invented",
+    "PrimFn purity: stateful follow-up documented if needed",
+    "Effect names match @std-sys floor only",
+    "CLI does not silently skip install on error",
+    "Action pins via ap-workflows@v0.1 only"
+  ],
+  "requires_repin": true,
+  "fleet": {
+    "ecosystem_lock_ref": "main",
+    "gpu": false,
+    "runner_tier": "compile"
+  },
+  "kickoff_prompt": "You are a mycelium train agent under zipper methodology.\nPACKAGE: PKG-WP4-TIER0\nHUB: https://github.com/tzervas/mycelium-lang/issues/30\nSURFACE (READ FULLY): docs/planning/orchestration/surfaces/S-HOST-REGISTRY.md\nSPIKES: docs/planning/SPIKE-RESOLUTIONS-2026-08-01.md (S1 registry, S2 blocking-hypha)\nDECISIONS: lock materializer adopt-now; no new host crate.\nYOUR LANE: <L-RT|L-HOST|L-CLI> \u2014 touch ONLY that repo.\nPIN: use ecosystem-lock-ref + dep-overrides to co-dev against sibling WIP SHAs.\nDO NOT: invent wild names not in S-HOST-REGISTRY catalog; add reactor; touch *-myc.\nSUCCESS: lane success_criteria + request adversarial review (L-ADV).\nTITLE: train/gap-closure: <summary>"
+}

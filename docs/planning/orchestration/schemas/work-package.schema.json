@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/tzervas/mycelium-lang/docs/planning/orchestration/schemas/work-package.schema.json",
+  "title": "Mycelium train work package",
+  "type": "object",
+  "required": [
+    "id", "title", "wp", "priority", "status", "hub_issue", "goal",
+    "non_goals", "surfaces", "lanes", "blocked_by", "unblocks",
+    "success_criteria", "adversarial_checklist", "kickoff_prompt"
+  ],
+  "properties": {
+    "id": { "type": "string", "pattern": "^PKG-" },
+    "title": { "type": "string" },
+    "wp": { "type": "string" },
+    "priority": { "enum": ["P0", "P1", "P2"] },
+    "status": {
+      "enum": ["draft", "ready", "zipping", "implementing", "review", "done", "blocked"]
+    },
+    "hub_issue": { "type": "string" },
+    "title_prefix": { "type": "string" },
+    "goal": { "type": "string" },
+    "non_goals": { "type": "array", "items": { "type": "string" } },
+    "surfaces": { "type": "array", "items": { "type": "string" } },
+    "lanes": { "type": "array" },
+    "blocked_by": { "type": "array", "items": { "type": "string" } },
+    "unblocks": { "type": "array", "items": { "type": "string" } },
+    "success_criteria": { "type": "array", "items": { "type": "string" } },
+    "adversarial_checklist": { "type": "array", "items": { "type": "string" } },
+    "kickoff_prompt": { "type": "string" },
+    "requires_repin": { "type": "boolean" },
+    "fleet": { "type": "object" }
+  }
+}
