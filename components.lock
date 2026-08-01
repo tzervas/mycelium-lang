@@ -1,4 +1,5 @@
 # components.lock v2 — git SHA pins for the mycelium-lang umbrella (Rust train)
+# 2026-08-01: re-pin after A1 merge train: runtime#12 + runtime#6 + cli#9 + std-net#1.
 # 2026-08-01: re-pin mycelium-cli main (process FLOOR_OPS + main interp/host pins).
 # 2026-08-01: re-pin mycelium-std-sys-host → process_spawn/wait/kill install (#8).
 # 2026-08-01 train/gap-closure: targeted re-pin of Tier-0 host-effect set +
@@ -23,7 +24,7 @@
 mycelium-bench=1958e0f6144c927928bc262f78b526f929c9e9bd tree=c67cfeddaf1e4386b9f1a41ae3f7ea431e1975c0
 mycelium-build=bd8087cf1cee6b2755b0512a747ee04889074c43 tree=98ce8edf5430499b39fe0298e4a9921694d12705
 mycelium-check=6d5f99d87157d3285d5ba53765b616136f281a4d tree=ecaefb528bb557a2eed4834d9c62642e264de789
-mycelium-cli=8d3a6fc322b081b09829c4e13cefdc3afb1e3c67 tree=4ba9d9b31108133e51cbd26a31e4e4fff26d5ce9
+mycelium-cli=4cc4632fa10c8f80b61c3bed5bdf586240bd4ef5 tree=74f150b1b838c0ef6cd7fb848c6089c7a62ede5b
 mycelium-cli-common=c673fafdd1bcecb713e3560689af6ab152033867 tree=c6fc7df3db94db6de08a7004729b1c37a7f5fc76
 mycelium-codegen=505448cbfb5553a34aca726f0d1b884981a83631 tree=4794b9466fe73027f81e0520d3fe9e8295a9b3c6
 mycelium-core=46d2515cbd86d2ae4d1365f4adcd2796737e9f0b tree=84ffeb7ccf5e35a6129618688e3af507fc9e27ee
@@ -33,7 +34,7 @@ mycelium-l1=2b92f54349eb0d4f67e32e983874df76908b9ab6 tree=da5985065541c574e62006
 mycelium-lint=2c6c86bbdd3e2c7abf9bfc0b81e7924279e9e712 tree=d5e6b2edc3d791dfe86ad41c1549d330cb81afa7
 mycelium-lsp=ba86f11ef1b33bdd091e897f6549fb87058445fc tree=a96f4d403cf1cd5df7d38480ab18879669dbde69
 mycelium-proj=20b8a6d264ac728e81cfe8cd90cec8d2a91370be tree=716ff4f82d8e97888d0c8902fdaeb1599c0f68ff
-mycelium-runtime=4af6d0051f4da4961a108869c56407e32b9a372b tree=6ab3e53ff6210115ea84e145bb3e81483de6aa1c
+mycelium-runtime=cfd2031ca12233e8ef97ab344d37f4399d8a157e tree=3552f7453e7908849e9b949d5639668a9d8a53b6
 mycelium-sec=17ce44cf26abffa3212a634262b48aee9618baea tree=f99bb75f2c4c62617268a8b96a01d2444e5dfe21
 mycelium-spore=283f9fd901607841d5302d5935d15d873a32eef7 tree=978c061afe5f8ccd50a958838af4fcefeac8cf70
 mycelium-std-cmp=e398a5d2ef981933a080736e366f49c9bfdb285c tree=54401858797d58f5cd600f7cd11ff4914bfc55f2
@@ -49,7 +50,7 @@ mycelium-std-fs=c7fb6dcbce6c37567dcd244c44cd7aa2a76ac11a tree=ec9fcd524c9aa28f48
 mycelium-std-io=312a4daf10190873d52d233ec905addc894e59eb tree=6d33d176729b6053490863c05c8f902896b015e9
 mycelium-std-iter=736bfca8675945c6107fcf8eecb3abf0ae6183f9 tree=8d17fa73652199b1f126b881a7e99531a71f03dd
 mycelium-std-math=7b0e02d96177754ef8311422abf478abc6e93e12 tree=23e84071cfdb7e0621197f59f8fcd197a6092d1c
-mycelium-std-net=0fd99fdd59bc23b267d51e94094bd531e471d5ae tree=fcfc81ad8fa92f6c2f9ecb6ec087b65f945350a5
+mycelium-std-net=1b6782541453d52ca1aa3deee24e08d3babc7313 tree=a1a02d070ce6c25e92be1fbe52a09caef2f20e33
 mycelium-std-numerics=2676276b1559f0c1c0b1c0c39ad48ba6ff89d639 tree=1fda677b5f7c1423c07db675494dec515d4164a3
 mycelium-std-rand=088256c5f29031e487cb7a335cbc9ff29794b58d tree=83d375d9538d71b67b92d5145c54e118ea09cd4c
 mycelium-std-recover=ad8787428c0d8c1eb2bf3a8cd6504cc39bca00bf tree=dcde0c287302ee6bdb075b06e9fcea527b78be69
