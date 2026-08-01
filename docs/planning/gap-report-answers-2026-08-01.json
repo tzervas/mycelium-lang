@@ -1,0 +1,25 @@
+{
+  "schema": "mycelium-gap-report-answers/v1",
+  "reportAsOf": "2026-08-01",
+  "exportedAt": "2026-08-01T15:33:01.292Z",
+  "answers": [
+    {"questionId": "q-lock-materializer", "value": "adopt-now", "updatedAt": "2026-08-01T15:33:01.292Z"},
+    {"questionId": "q-inflight-tracking", "value": "train-hub", "updatedAt": "2026-08-01T15:33:01.292Z"},
+    {"questionId": "q-docs-ci-fanout", "value": "merge-then-repin", "updatedAt": "2026-08-01T15:33:01.292Z"},
+    {"questionId": "q-registry-home", "value": "undecided", "updatedAt": "2026-08-01T15:33:01.292Z"},
+    {"questionId": "q-blocking-hypha", "value": "undecided", "updatedAt": "2026-08-01T15:33:01.292Z"},
+    {"questionId": "q-process-home", "value": "sys-now-split-later", "updatedAt": "2026-08-01T15:33:01.292Z"},
+    {"questionId": "q-s2-deploy", "value": "aot-required", "updatedAt": "2026-08-01T15:33:01.292Z"},
+    {"questionId": "q-codec-home", "value": "std-io", "updatedAt": "2026-08-01T15:33:01.292Z"},
+    {"questionId": "q-tls-stack", "value": "undecided", "updatedAt": "2026-08-01T15:33:01.292Z"},
+    {"questionId": "q-gpu-vsa", "value": "require-gpu-bench", "updatedAt": "2026-08-01T15:33:01.292Z"},
+    {"questionId": "q-workflow-lock", "value": "accept-proposal", "updatedAt": "2026-08-01T15:33:01.292Z"},
+    {"questionId": "q-port-order", "value": "runner-first", "updatedAt": "2026-08-01T15:33:01.292Z"},
+    {"questionId": "q-myc-defer", "value": "hard-freeze", "updatedAt": "2026-08-01T15:33:01.292Z"},
+    {"questionId": "q-frontend-priority", "value": "unit-method-multi", "updatedAt": "2026-08-01T15:33:01.292Z"},
+    {"questionId": "q-readme-refresh", "value": "batch-now", "updatedAt": "2026-08-01T15:33:01.292Z"},
+    {"questionId": "q-board", "value": ["issue-comments", "project-board", "umbrella-doc"], "updatedAt": "2026-08-01T15:33:01.292Z"},
+    {"questionId": "q-freeform", "value": "all self hosting of mycelium lang in mycelium will follow the full porting of the two first port target projects as they prove out if the lang is truly realistically usable and gives canaries for issues to patch out of the lang before the full port waves of the entire lang into itself.", "updatedAt": "2026-08-01T15:33:01.292Z"}
+  ],
+  "progress": {"answered": 17, "total": 17}
+}
