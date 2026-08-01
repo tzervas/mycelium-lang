@@ -1,4 +1,5 @@
 # components.lock v2 — git SHA pins for the mycelium-lang umbrella (Rust train)
+# 2026-08-01: re-pin mycelium-cli main (process FLOOR_OPS + main interp/host pins).
 # 2026-08-01: re-pin mycelium-std-sys-host → process_spawn/wait/kill install (#8).
 # 2026-08-01 train/gap-closure: targeted re-pin of Tier-0 host-effect set +
 # std-io codecs (WP-4 + WP-5 L-IO). Full 45-pin MODE=check+test draw-in still
@@ -22,7 +23,7 @@
 mycelium-bench=1958e0f6144c927928bc262f78b526f929c9e9bd tree=c67cfeddaf1e4386b9f1a41ae3f7ea431e1975c0
 mycelium-build=bd8087cf1cee6b2755b0512a747ee04889074c43 tree=98ce8edf5430499b39fe0298e4a9921694d12705
 mycelium-check=6d5f99d87157d3285d5ba53765b616136f281a4d tree=ecaefb528bb557a2eed4834d9c62642e264de789
-mycelium-cli=84bb309d1b47043b415b10fa309293afaf10515f tree=037f4263c60eb4d2471ec05331fd57e1308540d1
+mycelium-cli=8d3a6fc322b081b09829c4e13cefdc3afb1e3c67 tree=4ba9d9b31108133e51cbd26a31e4e4fff26d5ce9
 mycelium-cli-common=c673fafdd1bcecb713e3560689af6ab152033867 tree=c6fc7df3db94db6de08a7004729b1c37a7f5fc76
 mycelium-codegen=505448cbfb5553a34aca726f0d1b884981a83631 tree=4794b9466fe73027f81e0520d3fe9e8295a9b3c6
 mycelium-core=46d2515cbd86d2ae4d1365f4adcd2796737e9f0b tree=84ffeb7ccf5e35a6129618688e3af507fc9e27ee
