@@ -1,0 +1,63 @@
+{
+  "id": "PKG-WP6-NET",
+  "title": "std-net ureq+rustls wild-backed client",
+  "wp": "WP-6",
+  "priority": "P1",
+  "status": "blocked",
+  "hub_issue": "https://github.com/tzervas/mycelium-lang/issues/30",
+  "goal": "Blocking HTTPS client for GitHub/Telegram via wild:http_request using ureq+rustls.",
+  "non_goals": [
+    "Server sockets",
+    "tokio",
+    "HTTP/3"
+  ],
+  "surfaces": [
+    "S-STD-NET",
+    "S-HOST-REGISTRY"
+  ],
+  "lanes": [
+    {
+      "id": "L-ZIP",
+      "repo": "tzervas/mycelium-lang",
+      "role": "zipper",
+      "deliverables": [
+        "Freeze home: new pin vs std-io module",
+        "http_request encoding"
+      ],
+      "success_criteria": [
+        "Surface status FREEZE"
+      ]
+    },
+    {
+      "id": "L-NET",
+      "repo": "tzervas/mycelium-std-net",
+      "role": "implementer",
+      "depends_on_lanes": [
+        "L-ZIP"
+      ],
+      "deliverables": [
+        "crate + wild install",
+        "integration tests vs httpbin or tiny_http"
+      ],
+      "success_criteria": [
+        "TLS GET succeeds on self-hosted"
+      ]
+    }
+  ],
+  "blocked_by": [
+    "PKG-WP4-TIER0"
+  ],
+  "unblocks": [
+    "PKG-PORT-RUNNER",
+    "PKG-PORT-RELAY"
+  ],
+  "success_criteria": [
+    "HTTPS GET works from myc smoke"
+  ],
+  "adversarial_checklist": [
+    "No tokio in host floor",
+    "Matches ureq decision"
+  ],
+  "requires_repin": true,
+  "kickoff_prompt": "PACKAGE PKG-WP6-NET. blocked on Tier-0. Stack: ureq+rustls blocking.\nSurface S-STD-NET. Zipper freezes pin home first. Hub #30."
+}

@@ -1,0 +1,50 @@
+{
+  "id": "PKG-ORCH-WORKFLOWS",
+  "title": "ap-workflows: action pins composition + train-lane reusable",
+  "wp": "ORCH",
+  "priority": "P0",
+  "status": "ready",
+  "hub_issue": "https://github.com/tzervas/mycelium-lang/issues/30",
+  "goal": "Centralize GitHub Actions major pins in pins/actions.yml; document compose-down; add reusable train-lane package validation; keep rootless/minimal as late image concern.",
+  "non_goals": [
+    "Replacing all caller workflows in one PR",
+    "Building all base images now"
+  ],
+  "surfaces": [
+    "S-ECOSYSTEM-LOCK"
+  ],
+  "lanes": [
+    {
+      "id": "L-PINS",
+      "repo": "tzervas/ap-workflows",
+      "role": "ci",
+      "deliverables": [
+        "pins/actions.yml with latest stable majors",
+        "docs on compose-down",
+        "scripts/check-action-pins.py",
+        "optional reusable-train-lane.yml"
+      ],
+      "success_criteria": [
+        "Single file lists checkout, setup-python, setup-uv, upload-artifact, etc.",
+        "CI fails if workflow uses unlisted action major (checker)",
+        "Document late-bound rootless/minimal image policy"
+      ]
+    }
+  ],
+  "blocked_by": [],
+  "unblocks": [
+    "maintainable fleet composition",
+    "agent CI consistency"
+  ],
+  "success_criteria": [
+    "pins/actions.yml merged",
+    "checker in self-test or ci-checker"
+  ],
+  "adversarial_checklist": [
+    "Majors only at pin file; minors via dependabot",
+    "No secret in pins",
+    "Self-hosted only where policy says"
+  ],
+  "requires_repin": false,
+  "kickoff_prompt": "PACKAGE PKG-ORCH-WORKFLOWS. You work only in tzervas/ap-workflows.\nCreate pins/actions.yml as single source of stable major versions for all uses: actions.\nAdd a checker that greps workflows for uses: and verifies major matches pins (allow local ./).\nDocument: callers compose via uses: tzervas/ap-workflows/...@v0.1; image rootless/minimal applied in image build jobs late, not at reusable CI top.\nSelf-hosted fleet. No apt-get in CI scripts.\nHub mycelium-lang#30. Title train/gap-closure: pins composition."
+}

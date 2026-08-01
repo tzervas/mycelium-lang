@@ -1,0 +1,51 @@
+{
+  "id": "PKG-PORT-RUNNER",
+  "title": "Full port gha-runner-ctl (first canary)",
+  "wp": "WP-7",
+  "priority": "P1",
+  "status": "blocked",
+  "hub_issue": "https://github.com/tzervas/mycelium-lang/issues/30",
+  "goal": "Full host-effect port of gha-runner-ctl proving realistic usability (canary before self-host).",
+  "non_goals": [
+    "*-myc self-host",
+    "relay port"
+  ],
+  "surfaces": [
+    "S-HOST-REGISTRY",
+    "S-STD-NET",
+    "S-STD-PROCESS",
+    "S-CODECS"
+  ],
+  "lanes": [
+    {
+      "id": "L-PORT",
+      "repo": "tzervas/gha-runner-ctl",
+      "role": "implementer",
+      "deliverables": [
+        "mycelium-port full",
+        "differential tests"
+      ],
+      "success_criteria": [
+        "myc check/run host paths",
+        "differential vs Rust core"
+      ]
+    }
+  ],
+  "blocked_by": [
+    "PKG-WP5-PROCESS-CODECS",
+    "PKG-WP6-NET"
+  ],
+  "unblocks": [
+    "PKG-PORT-RELAY",
+    "self-host unfreeze discussion"
+  ],
+  "success_criteria": [
+    "Maintainer canary sign-off on hub"
+  ],
+  "adversarial_checklist": [
+    "Honesty about remaining gaps",
+    "No fake green without host ops"
+  ],
+  "requires_repin": false,
+  "kickoff_prompt": "PACKAGE PKG-PORT-RUNNER. First acceptance port canary.\nBlocked on WP-5/6. Hub #30 + gha-runner-ctl#27. Freeform: both ports before self-host waves."
+}

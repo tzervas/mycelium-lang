@@ -1,0 +1,99 @@
+{
+  "id": "PKG-WP0-LOCK",
+  "title": "Ecosystem lock materializer + package map",
+  "wp": "WP-0",
+  "priority": "P0",
+  "status": "implementing",
+  "hub_issue": "https://github.com/tzervas/mycelium-lang/issues/30",
+  "title_prefix": "train/gap-closure:",
+  "goal": "Land centralized train control: components.lock + PACKAGE_REPO_MAP materialize into Cargo [patch] via ap-workflows inputs ecosystem-lock-ref and dep-overrides.",
+  "non_goals": [
+    "Changing host-effect language semantics",
+    "Re-pinning all 45 components (WP-2)",
+    "AI model CI"
+  ],
+  "surfaces": [
+    "S-ECOSYSTEM-LOCK"
+  ],
+  "lanes": [
+    {
+      "id": "L-APW",
+      "repo": "tzervas/ap-workflows",
+      "role": "implementer",
+      "branch_hint": "feat/ecosystem-lock-materializer",
+      "depends_on_lanes": [],
+      "deliverables": [
+        "scripts/materialize-ecosystem-deps.py",
+        "reusable-ci-rust.yml inputs + step",
+        "docs/ECOSYSTEM_LOCK.md",
+        "PR https://github.com/tzervas/ap-workflows/pull/27"
+      ],
+      "success_criteria": [
+        "Empty ecosystem-lock-ref skips materialize (compat)",
+        "Overrides win over lock pins",
+        "Invalid override key fails loud",
+        "Self-test or unit path for materializer offline"
+      ],
+      "ci": {
+        "depth": "check+test",
+        "runner": "self-hosted-fleet"
+      }
+    },
+    {
+      "id": "L-LANG",
+      "repo": "tzervas/mycelium-lang",
+      "role": "docs",
+      "branch_hint": "train/wp0-execution-and-spikes",
+      "depends_on_lanes": [],
+      "deliverables": [
+        "docs/PACKAGE_REPO_MAP.json",
+        "scripts/materialize-ecosystem-deps.py mirror",
+        "PR https://github.com/tzervas/mycelium-lang/pull/29"
+      ],
+      "success_criteria": [
+        "Map covers multi-crate pins: value, runtime, core, codegen",
+        "Materializer can fetch map at lock-ref path docs/PACKAGE_REPO_MAP.json"
+      ]
+    },
+    {
+      "id": "L-REV",
+      "repo": "tzervas/mycelium-lang",
+      "role": "reviewer",
+      "depends_on_lanes": [
+        "L-APW",
+        "L-LANG"
+      ],
+      "deliverables": [
+        "adversarial review comment on both PRs"
+      ],
+      "success_criteria": [
+        "APPROVE or KICKBACK filed on hub #30"
+      ]
+    }
+  ],
+  "blocked_by": [],
+  "unblocks": [
+    "PKG-WP4-TIER0",
+    "PKG-WP1-FANOUT",
+    "all multi-repo feat trains"
+  ],
+  "success_criteria": [
+    "ap-workflows#27 mergeable green",
+    "mycelium-lang#29 mergeable green",
+    "Documented caller example with dep-overrides",
+    "Surface S-ECOSYSTEM-LOCK matches shipped inputs"
+  ],
+  "adversarial_checklist": [
+    "No eval of PR title/body into dep-overrides",
+    "Patch tables use full repo URLs matching Cargo.toml git sources",
+    "Multi-crate package names all rewritten on repo override",
+    "Rootless runner: materializer uses python3+curl already on image or pure python urllib"
+  ],
+  "requires_repin": false,
+  "fleet": {
+    "ecosystem_lock_ref": "main",
+    "gpu": false,
+    "runner_tier": "compile"
+  },
+  "kickoff_prompt": "You are an implementer agent on the mycelium train (zipper methodology).\nPACKAGE: PKG-WP0-LOCK\nHUB: https://github.com/tzervas/mycelium-lang/issues/30\nSURFACE: docs/planning/orchestration/surfaces/S-ECOSYSTEM-LOCK.md\nYOUR LANE: only the repo assigned in the package lane (do not edit foreign repos).\nREAD: DECISIONS-2026-08-01, SPIKE-RESOLUTIONS (N/A for this pkg), EXECUTION-PLAN WP-0.\nDELIVER: green PR meeting lane success_criteria; link hub with title prefix train/gap-closure:.\nCI: self-hosted fleet; do not apt-get; use existing image tools.\nDONE when: success_criteria checked and you request adversarial review."
+}

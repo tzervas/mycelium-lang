@@ -1,0 +1,75 @@
+{
+  "id": "PKG-WP5-PROCESS-CODECS",
+  "title": "Process in std-sys + codecs in std-io",
+  "wp": "WP-5",
+  "priority": "P1",
+  "status": "blocked",
+  "hub_issue": "https://github.com/tzervas/mycelium-lang/issues/30",
+  "goal": "After Tier-0 executes, add process/spawn wait kill in std-sys (wild-backed) and general JSON/TOML codecs in std-io (pure).",
+  "non_goals": [
+    "New std-process pin unless surface bloats",
+    "New std-json pin",
+    "async"
+  ],
+  "surfaces": [
+    "S-STD-PROCESS",
+    "S-CODECS",
+    "S-HOST-REGISTRY"
+  ],
+  "lanes": [
+    {
+      "id": "L-ZIP",
+      "repo": "tzervas/mycelium-lang",
+      "role": "zipper",
+      "deliverables": [
+        "Amend wild name catalog for process_*"
+      ],
+      "success_criteria": [
+        "Catalog PR before implementers"
+      ]
+    },
+    {
+      "id": "L-SYS",
+      "repo": "tzervas/mycelium-std-sys",
+      "role": "implementer",
+      "depends_on_lanes": [
+        "L-ZIP"
+      ],
+      "deliverables": [
+        "process floor + host install hooks"
+      ],
+      "success_criteria": [
+        "spawn/wait/kill tests on self-hosted"
+      ]
+    },
+    {
+      "id": "L-IO",
+      "repo": "tzervas/mycelium-std-io",
+      "role": "implementer",
+      "depends_on_lanes": [],
+      "deliverables": [
+        "JSON+TOML general codecs"
+      ],
+      "success_criteria": [
+        "Pure tests; no wild required"
+      ]
+    }
+  ],
+  "blocked_by": [
+    "PKG-WP4-TIER0"
+  ],
+  "unblocks": [
+    "PKG-WP6-NET",
+    "port config parsing"
+  ],
+  "success_criteria": [
+    "Codecs usable in pure dogfood",
+    "process wild ops execute"
+  ],
+  "adversarial_checklist": [
+    "Codecs remain pure",
+    "Process errors never silent"
+  ],
+  "requires_repin": true,
+  "kickoff_prompt": "PACKAGE PKG-WP5-PROCESS-CODECS. Blocked until PKG-WP4-TIER0 done.\nSurfaces S-STD-PROCESS S-CODECS. L-IO can start early (pure). L-SYS after Tier-0.\nHub #30. train/gap-closure: title prefix."
+}
