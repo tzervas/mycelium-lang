@@ -26,14 +26,14 @@ workflow-scoped `GITHUB_TOKEN`, which is `contents: read` only here).
 
 `umbrella-draw-in.sh` and `component-draw-in.sh` **validate** the pins in
 `components.lock`. Nothing **advances** them. That asymmetry is the whole
-problem: work can land green in a component repo and remain invisible to all 45
+problem: work can land green in a component repo and remain invisible to all 46
 lock pins and every sibling `rev =` dependency in the fleet.
 
 The measured state of that gap:
 
 | | |
 |---|--:|
-| Lock pins | 45 |
+| Lock pins | 46 |
 | Pins at their repo's current `main` | **1** |
 | **Stale pins** | **44 (98%)** |
 | Commits on `main` not visible to any pin | **314** |
