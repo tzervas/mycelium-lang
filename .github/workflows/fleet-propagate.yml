@@ -1,0 +1,205 @@
+# Coordinated cross-repo revision propagation for the Mycelium Rust train.
+#
+# WHY THIS EXISTS
+# The draw-in workflows validate the pins in components.lock. Nothing advanced
+# them, so work could land green in a component repo and stay invisible to all 45
+# pins and every sibling `rev =` dependency. Measured 2026-07-24: 44/45 pins
+# stale, 314 commits invisible, 42 repos needing edits, DAG depth 9.
+#
+# HOW IT IS SELF-DRIVING
+# Propagation must cascade (see docs/FLEET_PROPAGATION.md): cargo treats one git
+# URL at two revs as two source ids, so the fleet must hold one rev per sibling,
+# and a dependency's bump commit has to land before its dependents can point at
+# it. This workflow therefore opens ONE wave per run and arms auto-merge. When
+# that wave's PRs go green they merge themselves, which moves those repos' HEADs,
+# and the next run picks up the following wave. No human is in the loop between
+# waves; the per-repo required checks remain the gate.
+#
+# RUNNER CHOICE (deliberate, and a departure from release.yml)
+# This runs on ubuntu-latest, not the self-hosted fleet. It performs no build —
+# it is pure GitHub API work — and it is the mechanism that unblocks the fleet.
+# Pinning it to self-hosted runners would make fleet recovery depend on the fleet
+# being healthy, which is exactly backwards. Nothing here compiles Mycelium code;
+# every component's own required checks still run on their normal runners.
+#
+# SUPPLY CHAIN
+# No third-party actions. actions/checkout only (already used repo-wide), then
+# the repo's own scripts/fleet-propagate.py against the REST API via gh.
+name: fleet-propagate
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Plan and clone but never commit, push, or open PRs"
+        type: boolean
+        default: false
+      max_prs:
+        description: "Hard cap on PRs opened in one run (safety valve)"
+        default: "12"
+      automerge:
+        description: "Arm auto-merge so each PR merges itself once its own checks pass"
+        type: boolean
+        default: true
+      train:
+        description: "Train label recorded in commit/PR text"
+        default: ""
+  # Instant trigger. A component repo (or the release workflow) can fire this
+  # with:  gh api repos/tzervas/mycelium-lang/dispatches -f event_type=component-advanced
+  repository_dispatch:
+    types: [component-advanced]
+  # Backstop so a missed dispatch cannot strand the fleet indefinitely.
+  schedule:
+    - cron: "17 */2 * * *"
+
+# Never run two propagations at once: overlapping runs would resolve different
+# target revs and could open PRs that pin a sibling at two revs.
+concurrency:
+  group: fleet-propagate
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  propagate:
+    name: propagate one wave
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Never-silent: a missing token must fail loudly rather than quietly
+      # degrade into a no-op that looks like "fleet is in sync".
+      - name: Require the cross-repo token
+        env:
+          FLEET_TOKEN: ${{ secrets.FLEET_PROPAGATE_TOKEN }}
+        run: |
+          set -eu
+          if [ -z "${FLEET_TOKEN}" ]; then
+            echo "::error::secret FLEET_PROPAGATE_TOKEN is not set. Propagation writes to"
+            echo "::error::other repositories, which the workflow-scoped GITHUB_TOKEN cannot do."
+            echo "::error::Create a token with contents:write + pull_requests:write on tzervas/mycelium-*"
+            echo "::error::and add it as FLEET_PROPAGATE_TOKEN. Refusing rather than reporting a false no-op."
+            exit 1
+          fi
+
+      # apply_repo / lock re-pin use plain `git push` over HTTPS. actions/checkout wires
+      # GITHUB_TOKEN (contents:read here), which cannot write sibling repos or even push a
+      # branch on this one. Point git's credential helper at the fleet token so push/PR
+      # creation actually authenticate — without this, apply silently failed at push time
+      # under the previous fail-open exit codes.
+      - name: Authenticate git + gh with the fleet token
+        env:
+          GH_TOKEN: ${{ secrets.FLEET_PROPAGATE_TOKEN }}
+        run: |
+          set -eu
+          gh auth setup-git
+          gh auth status
+
+      - name: Plan (read-only) and check the single-version invariant
+        id: plan
+        env:
+          GH_TOKEN: ${{ secrets.FLEET_PROPAGATE_TOKEN }}
+        run: |
+          set -eu
+          python3 scripts/fleet-propagate.py plan --json > plan.json
+          echo "--- plan ---"; cat plan.json
+          for k in pins_stale waves_required total_edits repos_needing_pr \
+                   propagation_complete lock_in_sync; do
+            v=$(python3 -c "import json;print(json.load(open('plan.json'))['$k'])")
+            echo "$k=$v" >> "$GITHUB_OUTPUT"
+          done
+
+      - name: Summary
+        run: |
+          {
+            echo "### Fleet propagation"
+            echo ""
+            echo "| metric | value |"
+            echo "|---|--:|"
+            echo "| stale lock pins | ${{ steps.plan.outputs.pins_stale }} |"
+            echo "| waves remaining | ${{ steps.plan.outputs.waves_required }} |"
+            echo "| sibling rev edits | ${{ steps.plan.outputs.total_edits }} |"
+            echo "| repos needing a PR | ${{ steps.plan.outputs.repos_needing_pr }} |"
+            echo "| propagation complete | ${{ steps.plan.outputs.propagation_complete }} |"
+            echo "| lock in sync | ${{ steps.plan.outputs.lock_in_sync }} |"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # One wave per run. Merging it moves those repos' HEADs; the next run
+      # resolves fresh state and picks up the wave behind it.
+      - name: Apply the next wave
+        if: steps.plan.outputs.propagation_complete == 'False'
+        env:
+          GH_TOKEN: ${{ secrets.FLEET_PROPAGATE_TOKEN }}
+          # workflow_dispatch inputs are empty strings on schedule/repository_dispatch.
+          MAX_PRS: ${{ inputs.max_prs || '12' }}
+          DRY_RUN: ${{ inputs.dry_run || false }}
+          AUTOMERGE: ${{ inputs.automerge || true }}
+          TRAIN: ${{ inputs.train || '' }}
+        run: |
+          set -eu
+          # Build argv as a bash array — never unquoted `$args` (word-split / injection on
+          # free-text `train` labels). Empty schedule inputs fall back via the env defaults.
+          cmd=(python3 scripts/fleet-propagate.py apply --wave 1 --max-prs "${MAX_PRS}")
+          if [ "${DRY_RUN}" = "true" ]; then
+            cmd+=(--dry-run)
+          fi
+          # Default automerge ON (self-driving waves); explicit false disables.
+          if [ "${AUTOMERGE}" != "false" ]; then
+            cmd+=(--automerge)
+          fi
+          if [ -n "${TRAIN}" ]; then
+            cmd+=(--train "${TRAIN}")
+          fi
+          printf 'fleet-propagate.py apply:';
+          printf ' %q' "${cmd[@]}"
+          printf '\n'
+          "${cmd[@]}"
+
+      # Only once every sibling edge has settled does re-pinning the umbrella
+      # describe a real, buildable fleet state.
+      - name: Re-pin components.lock (only at fixpoint)
+        if: >-
+          steps.plan.outputs.propagation_complete == 'True' &&
+          steps.plan.outputs.lock_in_sync == 'False' &&
+          inputs.dry_run != true
+        env:
+          GH_TOKEN: ${{ secrets.FLEET_PROPAGATE_TOKEN }}
+        run: |
+          set -eu
+          python3 scripts/fleet-propagate.py lock --write
+          git diff --quiet -- components.lock && { echo "no lock change"; exit 0; }
+
+          branch="chore/lock-sync-$(date -u +%Y%m%dT%H%M%SZ)"
+          n=$(git diff -U0 -- components.lock | grep -c '^+mycelium' || true)
+          git config user.name  "fleet-propagate"
+          git config user.email "noreply@github.com"
+          git checkout -b "$branch"
+          git add components.lock
+          title="chore(lock): re-pin ${n} component(s) after fleet propagation"
+
+          # Body is written to a file rather than inlined: a bare newline at
+          # column 0 inside this block scalar would terminate the YAML block.
+          {
+            printf 'Automated re-pin at propagation fixpoint. Every sibling `rev` edge is\n'
+            printf 'settled, so these pins describe a fleet state that actually resolves.\n\n'
+            printf 'Regenerated by `scripts/fleet-propagate.py lock --write`; rev and tree\n'
+            printf 'hashes are read from live GitHub state. The draw-in gate validates these\n'
+            printf 'pins on this PR.\n'
+          } > /tmp/lock-pr-body.md
+
+          {
+            printf '%s\n\n' "$title"
+            printf 'Sibling propagation reached fixpoint — every sibling rev edge is\n'
+            printf 'settled, so these pins now describe a fleet state that actually\n'
+            printf 'resolves. Regenerated by scripts/fleet-propagate.py; rev and tree\n'
+            printf 'hashes come from live GitHub state.\n'
+          } > /tmp/lock-commit-msg.txt
+
+          git commit -F /tmp/lock-commit-msg.txt
+          git push -u origin "$branch"
+
+          gh pr create --base main --head "$branch" \
+            --title "$title" --body-file /tmp/lock-pr-body.md
+          gh pr merge --auto --squash "$branch" || \
+            echo "::warning::auto-merge not armed on the lock PR — merge it manually"

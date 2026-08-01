@@ -1,0 +1,57 @@
+# Component-side propagation trigger. INSTALL THIS INTO COMPONENT REPOS as
+# .github/workflows/fleet-notify.yml (see scripts/rollout-fleet-notify.sh).
+#
+# Tells the umbrella that this component advanced, so propagation starts within
+# seconds instead of waiting for the umbrella's 2-hourly backstop schedule.
+#
+# This workflow is OPTIONAL. The umbrella's schedule already catches every
+# advance; this only removes the latency. It costs one secret per repo, so if you
+# would rather hold exactly one credential fleet-wide, skip it — the schedule is
+# the zero-secret path and nothing is lost but promptness.
+#
+# Fires on both:
+#   - push to main    — the ordinary "work landed" signal
+#   - release publish — the explicit train-cut signal
+name: fleet-notify
+
+on:
+  push:
+    branches: [main]
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: fleet-notify-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  notify:
+    # Pure API call, no build. Deliberately not self-hosted: this is the signal
+    # that unblocks the fleet, so it must not depend on fleet capacity.
+    runs-on: ubuntu-latest
+    steps:
+      - name: Dispatch component-advanced to the umbrella
+        env:
+          DISPATCH_TOKEN: ${{ secrets.FLEET_DISPATCH_TOKEN }}
+        run: |
+          set -eu
+          if [ -z "${DISPATCH_TOKEN}" ]; then
+            # Never-silent, but not fatal: the umbrella's schedule still catches
+            # this advance. Warn so a missing secret cannot masquerade as
+            # "propagation is working".
+            echo "::warning::FLEET_DISPATCH_TOKEN not set — skipping instant trigger."
+            echo "::warning::The umbrella's 2-hourly schedule will still pick this up."
+            exit 0
+          fi
+          code=$(curl -sS -o /tmp/resp.json -w '%{http_code}' -X POST \
+            -H "Authorization: Bearer ${DISPATCH_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            "${GITHUB_API_URL}/repos/tzervas/mycelium-lang/dispatches" \
+            -d "{\"event_type\":\"component-advanced\",\"client_payload\":{\"repo\":\"${GITHUB_REPOSITORY}\",\"sha\":\"${GITHUB_SHA}\",\"event\":\"${GITHUB_EVENT_NAME}\"}}")
+          if [ "$code" != "204" ]; then
+            echo "::error::dispatch failed (HTTP $code)"; cat /tmp/resp.json; exit 1
+          fi
+          echo "dispatched component-advanced for ${GITHUB_REPOSITORY}@${GITHUB_SHA}"
