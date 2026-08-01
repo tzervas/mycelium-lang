@@ -1,0 +1,325 @@
+{
+  "schema": "mycelium-package-repo-map/v1",
+  "train": "v0.464.0",
+  "asOf": "2026-08-01",
+  "description": "Maps Cargo package names to components.lock pin (GitHub repo). dep_overrides key by repo pin.",
+  "packages": [
+    {
+      "package": "mycelium-bench",
+      "repo": "mycelium-bench",
+      "note": "lock pin root package (1:1)"
+    },
+    {
+      "package": "mycelium-build",
+      "repo": "mycelium-build",
+      "note": "lock pin root package (1:1)"
+    },
+    {
+      "package": "mycelium-cert",
+      "repo": "mycelium-runtime",
+      "note": "workspace member; override by repo pin"
+    },
+    {
+      "package": "mycelium-check",
+      "repo": "mycelium-check",
+      "note": "lock pin root package (1:1)"
+    },
+    {
+      "package": "mycelium-cli",
+      "repo": "mycelium-cli",
+      "note": "lock pin root package (1:1)"
+    },
+    {
+      "package": "mycelium-cli-common",
+      "repo": "mycelium-cli-common",
+      "note": "lock pin root package (1:1)"
+    },
+    {
+      "package": "mycelium-codegen",
+      "repo": "mycelium-codegen",
+      "note": "multi-crate workspace root / lock pin"
+    },
+    {
+      "package": "mycelium-core",
+      "repo": "mycelium-core",
+      "note": "multi-crate workspace root / lock pin"
+    },
+    {
+      "package": "mycelium-dense",
+      "repo": "mycelium-value",
+      "note": "workspace member; override by repo pin"
+    },
+    {
+      "package": "mycelium-diag",
+      "repo": "mycelium-runtime",
+      "note": "workspace member; override by repo pin"
+    },
+    {
+      "package": "mycelium-doc",
+      "repo": "mycelium-doc",
+      "note": "lock pin root package (1:1)"
+    },
+    {
+      "package": "mycelium-fmt",
+      "repo": "mycelium-fmt",
+      "note": "lock pin root package (1:1)"
+    },
+    {
+      "package": "mycelium-interp",
+      "repo": "mycelium-runtime",
+      "note": "workspace member; override by repo pin"
+    },
+    {
+      "package": "mycelium-l1",
+      "repo": "mycelium-l1",
+      "note": "lock pin root package (1:1)"
+    },
+    {
+      "package": "mycelium-lint",
+      "repo": "mycelium-lint",
+      "note": "lock pin root package (1:1)"
+    },
+    {
+      "package": "mycelium-lsp",
+      "repo": "mycelium-lsp",
+      "note": "lock pin root package (1:1)"
+    },
+    {
+      "package": "mycelium-mlir",
+      "repo": "mycelium-codegen",
+      "note": "workspace member; override by repo pin"
+    },
+    {
+      "package": "mycelium-numerics",
+      "repo": "mycelium-value",
+      "note": "workspace member; override by repo pin"
+    },
+    {
+      "package": "mycelium-proj",
+      "repo": "mycelium-proj",
+      "note": "lock pin root package (1:1)"
+    },
+    {
+      "package": "mycelium-rt-abi",
+      "repo": "mycelium-runtime",
+      "note": "workspace member; override by repo pin"
+    },
+    {
+      "package": "mycelium-runtime",
+      "repo": "mycelium-runtime",
+      "note": "multi-crate workspace root / lock pin"
+    },
+    {
+      "package": "mycelium-sched",
+      "repo": "mycelium-runtime",
+      "note": "workspace member; override by repo pin"
+    },
+    {
+      "package": "mycelium-sec",
+      "repo": "mycelium-sec",
+      "note": "lock pin root package (1:1)"
+    },
+    {
+      "package": "mycelium-select",
+      "repo": "mycelium-runtime",
+      "note": "workspace member; override by repo pin"
+    },
+    {
+      "package": "mycelium-spore",
+      "repo": "mycelium-spore",
+      "note": "lock pin root package (1:1)"
+    },
+    {
+      "package": "mycelium-stack",
+      "repo": "mycelium-core",
+      "note": "workspace member; override by repo pin"
+    },
+    {
+      "package": "mycelium-std-cmp",
+      "repo": "mycelium-std-cmp",
+      "note": "lock pin root package (1:1)"
+    },
+    {
+      "package": "mycelium-std-collections",
+      "repo": "mycelium-std-collections",
+      "note": "lock pin root package (1:1)"
+    },
+    {
+      "package": "mycelium-std-conformance",
+      "repo": "mycelium-std-conformance",
+      "note": "lock pin root package (1:1)"
+    },
+    {
+      "package": "mycelium-std-content",
+      "repo": "mycelium-std-content",
+      "note": "lock pin root package (1:1)"
+    },
+    {
+      "package": "mycelium-std-core",
+      "repo": "mycelium-std-core",
+      "note": "lock pin root package (1:1)"
+    },
+    {
+      "package": "mycelium-std-dense",
+      "repo": "mycelium-std-dense",
+      "note": "lock pin root package (1:1)"
+    },
+    {
+      "package": "mycelium-std-diag",
+      "repo": "mycelium-std-diag",
+      "note": "lock pin root package (1:1)"
+    },
+    {
+      "package": "mycelium-std-error",
+      "repo": "mycelium-std-error",
+      "note": "lock pin root package (1:1)"
+    },
+    {
+      "package": "mycelium-std-fmt",
+      "repo": "mycelium-std-fmt",
+      "note": "lock pin root package (1:1)"
+    },
+    {
+      "package": "mycelium-std-fs",
+      "repo": "mycelium-std-fs",
+      "note": "lock pin root package (1:1)"
+    },
+    {
+      "package": "mycelium-std-io",
+      "repo": "mycelium-std-io",
+      "note": "lock pin root package (1:1)"
+    },
+    {
+      "package": "mycelium-std-iter",
+      "repo": "mycelium-std-iter",
+      "note": "lock pin root package (1:1)"
+    },
+    {
+      "package": "mycelium-std-math",
+      "repo": "mycelium-std-math",
+      "note": "lock pin root package (1:1)"
+    },
+    {
+      "package": "mycelium-std-numerics",
+      "repo": "mycelium-std-numerics",
+      "note": "lock pin root package (1:1)"
+    },
+    {
+      "package": "mycelium-std-rand",
+      "repo": "mycelium-std-rand",
+      "note": "lock pin root package (1:1)"
+    },
+    {
+      "package": "mycelium-std-recover",
+      "repo": "mycelium-std-recover",
+      "note": "lock pin root package (1:1)"
+    },
+    {
+      "package": "mycelium-std-runtime",
+      "repo": "mycelium-std-runtime",
+      "note": "lock pin root package (1:1)"
+    },
+    {
+      "package": "mycelium-std-select",
+      "repo": "mycelium-std-select",
+      "note": "lock pin root package (1:1)"
+    },
+    {
+      "package": "mycelium-std-spore",
+      "repo": "mycelium-std-spore",
+      "note": "lock pin root package (1:1)"
+    },
+    {
+      "package": "mycelium-std-swap",
+      "repo": "mycelium-std-swap",
+      "note": "lock pin root package (1:1)"
+    },
+    {
+      "package": "mycelium-std-sys",
+      "repo": "mycelium-std-sys",
+      "note": "lock pin root package (1:1)"
+    },
+    {
+      "package": "mycelium-std-sys-host",
+      "repo": "mycelium-std-sys-host",
+      "note": "lock pin root package (1:1)"
+    },
+    {
+      "package": "mycelium-std-ternary",
+      "repo": "mycelium-std-ternary",
+      "note": "lock pin root package (1:1)"
+    },
+    {
+      "package": "mycelium-std-testing",
+      "repo": "mycelium-std-testing",
+      "note": "lock pin root package (1:1)"
+    },
+    {
+      "package": "mycelium-std-text",
+      "repo": "mycelium-std-text",
+      "note": "lock pin root package (1:1)"
+    },
+    {
+      "package": "mycelium-std-time",
+      "repo": "mycelium-std-time",
+      "note": "lock pin root package (1:1)"
+    },
+    {
+      "package": "mycelium-std-vsa",
+      "repo": "mycelium-std-vsa",
+      "note": "lock pin root package (1:1)"
+    },
+    {
+      "package": "mycelium-transpile",
+      "repo": "mycelium-transpile",
+      "note": "lock pin root package (1:1)"
+    },
+    {
+      "package": "mycelium-value",
+      "repo": "mycelium-value",
+      "note": "multi-crate workspace root / lock pin"
+    },
+    {
+      "package": "mycelium-vsa",
+      "repo": "mycelium-value",
+      "note": "workspace member; override by repo pin"
+    },
+    {
+      "package": "mycelium-vsa-decode",
+      "repo": "mycelium-runtime",
+      "note": "workspace member; override by repo pin"
+    },
+    {
+      "package": "mycelium-workstack",
+      "repo": "mycelium-core",
+      "note": "workspace member; override by repo pin"
+    }
+  ],
+  "multi_crate_pins": {
+    "mycelium-value": [
+      "mycelium-value",
+      "mycelium-dense",
+      "mycelium-numerics",
+      "mycelium-vsa"
+    ],
+    "mycelium-runtime": [
+      "mycelium-interp",
+      "mycelium-sched",
+      "mycelium-cert",
+      "mycelium-diag",
+      "mycelium-select",
+      "mycelium-vsa-decode",
+      "mycelium-rt-abi"
+    ],
+    "mycelium-core": [
+      "mycelium-core",
+      "mycelium-stack",
+      "mycelium-workstack"
+    ],
+    "mycelium-codegen": [
+      "mycelium-codegen",
+      "mycelium-mlir"
+    ]
+  },
+  "git_url_template": "https://github.com/tzervas/{repo}"
+}
