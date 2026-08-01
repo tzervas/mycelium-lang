@@ -91,7 +91,7 @@ jobs:
           set -euo pipefail
           rust_pins=$(grep -cE '^[a-z0-9-]+=[0-9a-f]{40} tree=[0-9a-f]{40}$' components.lock || true)
           myc_pins=$(grep -cE '^[a-z0-9-]+-myc=[0-9a-f]{40}$' components.lock || true)
-          test "$rust_pins" -eq 45
+          test "$rust_pins" -eq 46
           test "$myc_pins" -eq 0
       - name: Native draw-in
         if: matrix.mode == 'native'

@@ -46,7 +46,7 @@ jobs:
           rust_pins=$(grep -cE '^[a-z0-9-]+=[0-9a-f]{40} tree=[0-9a-f]{40}$' components.lock || true)
           myc_pins=$(grep -cE '^[a-z0-9-]+-myc=[0-9a-f]{40}$' components.lock || true)
           echo "rust_pins=$rust_pins myc_pins=$myc_pins"
-          test "$rust_pins" -eq 45
+          test "$rust_pins" -eq 46
           test "$myc_pins" -eq 0
       - name: Show support matrix (required vs experimental)
         run: |
