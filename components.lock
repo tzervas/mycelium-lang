@@ -1,71 +1,65 @@
 # components.lock v2 — git SHA pins for the mycelium-lang umbrella (Rust train)
-# 2026-08-01: WP-2 measured re-pin — all 46 Rust pins advanced to default-branch HEAD after S-HOST-REGISTRY runtime#13 fan-out + WP-1 docs/CI merges.
-# 2026-08-01: re-pin after runtime#13 S-HOST-REGISTRY primary wild: dispatch + host/cli/net tips.
-# 2026-08-01: re-pin after A1 merge train: runtime#12 + runtime#6 + cli#9 + std-net#1.
-# 2026-08-01: re-pin mycelium-cli main (process FLOOR_OPS + main interp/host pins).
-# 2026-08-01: re-pin mycelium-std-sys-host → process_spawn/wait/kill install (#8).
-# 2026-08-01 train/gap-closure: targeted re-pin of Tier-0 host-effect set +
-# std-io codecs (WP-4 + WP-5 L-IO). Full 45-pin MODE=check+test draw-in still
-# required before restating the umbrella buildable guarantee for all pins.
+# 2026-08-04: repin — every one of the 46 core-train pins (dev branch's prior snapshot,
+# 45 pins, was itself stale relative to main and missing mycelium-std-net entirely)
+# advanced to each component repo's current default-branch (main) HEAD, verified via
+# `git ls-remote refs/heads/main`, fetched, and confirmed `git cat-file -t <rev>` == commit
+# before recording; tree= recomputed as `git rev-parse <rev>^{tree}` for every entry. This
+# changes no code — only what the capability-matrix build measures. Newly measurable at
+# these pins: l1#25 FE-1/FE-2/FE-3 (statement-sequencing, method-call-sugar,
+# paren-unit-not-a-type), l1#24 S-LET-REINFER (let-wild-annotated), and l1#26's
+# typed-prim linkage (TypedPrimEnv / check_phylum_with_deps_and_prims /
+# EffectSource::TypedPrim). mycelium-std-net added (was absent from dev's prior lock).
 # train=v0.464.0 (course-correction Phase B, 2026-07-18; steer handoff §6.2-2 lockstep)
 # archive_main=aad96b7a425710db5e91094d4fc2ca21a129e41a (the seed baseline; unchanged)
 # Rust component pins: rev + content hash (git tree hash of the pinned rev) — all 46 listed
 # buildable (fmt/clippy/test green standalone) at these revs. No self-pin by design.
-# 2026-07-23: that claim was previously ASPIRATIONAL, not measured. The first full-scope draw-in
-# (all 46 pins, MODE=check+test, FAIL_FAST=0) returned ok=44 fail=1: mycelium-fmt's conformance
-# test resolved fixtures through a monorepo-era sibling path (../mycelium-proj/tests/fixtures), so
-# it passed only where a sibling checkout happened to exist and could never pass standalone. The
-# red `ci` run on main caught it at a 9-pin PIN_LIMIT slice. Fixed in mycelium-fmt#5 and re-pinned
-# below; the claim is now measured rather than asserted — 44 verified at these revs in that sweep,
-# mycelium-fmt verified at its new rev. Keep it that way: re-run the full sweep before editing
-# this header, and do not restate the guarantee for pins the gate has not actually exercised.
 # Dual-umbrella split (2026-07-21): *-myc pins moved to tzervas/mycelium-lang-myc.
 # C5 re-pin (course-correction Phase C, 2026-07-18): 43 repos advanced to the AX-core train
 # (monorepo delta archive..fff42708 propagated + lockstep re-pin; cli-common + std-sys
 # unchanged by design — no content and no moved deps).
-mycelium-bench=23eb585feb5be8ccaa2a96b65db4ae0726a57236 tree=d9ae5cb6584a0eac5a186386c292029f0e5cdb5d
-mycelium-build=8026b71905151e55916413cb0d0e435351be3d30 tree=20645da00af27b9265bff1d3af0e816564212172
-mycelium-check=e0e7a4e71ef08d6af2db3c6135be45c5669d0593 tree=ef0c604b4b12ac2c7192796ee3a72f7a517a1b81
-mycelium-cli=5bb76a6c35af26ef9c1c0003c1e493e6526de576 tree=c866581e7f79d8bfaf7621863f1d9e89f47d5bc4
-mycelium-cli-common=13c4ae25357c45468731fc32a9ecbc946a9aac52 tree=bf0212778fe192e92a1697d6498a2a5590e6c8f7
-mycelium-codegen=5458549e682749e4558717623217230cdc633290 tree=33f4910bfb4fbce3f7177528fb964c676a29a8f1
-mycelium-core=3958d2ea3c3921611e33f1f00e3469b29a939a76 tree=40c7a435a80ae40e7891dd0751442a6ccd6e29af
-mycelium-doc=f0072b837a1d80ac0cdf56f6938665e3d96ef253 tree=83021144edae2d4b9c8d40faa85f3bdb6873d98c
-mycelium-fmt=d263539e0fc6f847ce5f5518f66889f109835072 tree=2bd159966ba43559a01fdd65d3573a2f824a39d5
-mycelium-l1=31f7aaa956cca0e1c7a894eeaff4d10d58b5b2b8 tree=a4e5838def2e49f8619f9cb6f5804f620da95002
-mycelium-lint=53b2e675baed391f93f1f0865aba3f259df9ad09 tree=681f51d7886e5f1ebb1bd8fb63e3caca488ba176
-mycelium-lsp=f60a7ce3261cda4721a5abd52d8e9551534470a6 tree=9bcf3e00dd31aea08adf6e58a0c92eb736d29489
-mycelium-proj=3209a570c472cd8a94c52f8562cbbfd07c12f322 tree=811383e8a6a7b58d64309fa5342800456f8da03b
-mycelium-runtime=04bebbc887792f6c2ed2289880f078e7368e845a tree=12ba993aef514b9362f632c3bae1655fc98efc54
-mycelium-sec=fa990f610139395c2e67c4e9cd30d57d62c923dc tree=70209b4c340ffcb492509fdc5ca335536a0a6211
-mycelium-spore=69e8cdabd346f9a21e317a8436e3ecfd54b15b37 tree=bac5652eccffeb4f308664609bbc665b502e108f
-mycelium-std-cmp=fe9f46fc45e011ad646d6c41f95ac0eb6d307547 tree=d6f30d534d0e0d55a1a34f39429b43b7c5f14fbe
-mycelium-std-collections=18f4944da2eafd6735035ede6b318ba1aaf95b0c tree=c12459ea0f05f18c876374fbbdbefe1c2b4e26f9
-mycelium-std-conformance=94670bbbcebcb8ffafcfe4df234cc7b8ba400078 tree=c78ebcca50514e3509e2dfd87e836c3277387123
-mycelium-std-content=49e136823fe9b952eef93b1f4d9a06685ca03a7e tree=87b28834edddb89ce70d08443034ea43f1b885f0
-mycelium-std-core=e732b728f1d7ecb83545c30d51212856f266ebbe tree=c6f58ae1f23490039b9592ab0818deda2538f4b7
-mycelium-std-dense=b6790d2fec491f4a3374a2674a1f4ef50d2f6d30 tree=21e35865fdc9d8996743f9a387fbff1a44a289f1
-mycelium-std-diag=71c151f88b8b616595f2750d78ec8ddb6c3a0167 tree=5003a21f47e2f6d1dcbfc8829d08e8f1dd56c25b
-mycelium-std-error=8f64214bf2b6bb5134d42934a93065824a973a08 tree=c493f2468fd3529d47cce3b05bb0adad2b93989d
-mycelium-std-fmt=d616108baa270e513e68be243a66101591000258 tree=f943f0333619c48997700fb59357c00b4b804d11
-mycelium-std-fs=bf170aa930e1c05d10e9bf4efa3b8757225cca84 tree=2421d4be58d5d6bd3dc6a647173989de496c8bb5
-mycelium-std-io=c5ec9b9b808c03c295a277a0719ba8416b0ddc5b tree=928a237d3125f2d0fb6381dbe7bbfa5bdb50d8a6
-mycelium-std-iter=f1ba50986c4ab32642b067673c609ec1057eff3f tree=d01f7a124fd24e9c11ec4dc922f77db14c191707
-mycelium-std-math=dcc2c1e4975effe80d55cc744f5e324352ee738c tree=b6817ca700d9c35b4ee19637c048f10dcc15e6ef
-mycelium-std-net=c452977c996b61ca1a811e7662d360500cf77d4b tree=458dc93c0dea4962f5b249018477e70d4348b73f
-mycelium-std-numerics=170cbdc72221b59e882d41ff4e27063772933f24 tree=184f0ba66a3ac31bf8b3637de68f4ee8b7c9f9dc
-mycelium-std-rand=1fe8408720f87fef6c77229f7a8eb2cd7d837648 tree=5d8f697b26bfa57a1cd1f283cc310a843ab2714e
-mycelium-std-recover=31bb47e8ded88517b815c4d04814d6e88cac3edf tree=fb93b85acc8c1e9774aed9cb006025a665e38941
-mycelium-std-runtime=e43a1298b5caa90023b0f531974bc7cf9d1e8c18 tree=3c74b3e6822bd25acd01c80937efcd317d4ef2db
-mycelium-std-select=a8c984fca1e1146df5cb2a6a796d6af33b1ee8ab tree=505549e48f29707f019291dae94431eb0ecd6a83
-mycelium-std-spore=fb867c7a30519973703772d323ccfc5aead847fc tree=be2bda64ea316a6a25f841e55346febf61164cab
-mycelium-std-swap=9263822b0c78bc85aa8ea5dc587b9036edacc776 tree=2d0f3f07d26844dddf7e96d33ab3e2e96b8965bb
-mycelium-std-sys=bd38b8a903f464871118766e85da97dcb780f3b0 tree=4bfdfb45ce2090683c32021a037207cf93333224
-mycelium-std-sys-host=50b96a8edc487fede1ef38a1fc5aa64125024702 tree=c110a32a0243c698541c57b0dbcdb01a33e1aa2b
-mycelium-std-ternary=db0eb5f3b7955d0895342780021dff76c6a6ef5d tree=93d0b708c3dae3c80a1bcbd13e7a9a61932cc2d9
-mycelium-std-testing=37e778ab1bf28cddd4e3a57461cc4a556c1f4338 tree=18b62585667b13c10d9185ee5713061b39ceb791
-mycelium-std-text=0e9457a5850d4473d210f3dcf2c410f746d14be6 tree=1af8153e321a532420829d4da73bc0c980b0a98b
-mycelium-std-time=27252b75ec8dbf34d3f7ab01eeb61c8756ee4216 tree=4cad81e68df334baab91ffebf2ae85725a8c555d
-mycelium-std-vsa=052c9482e58da3b2d850ab96ff9e06e12c547c9e tree=cf26e7f3f15b5083a859ce883f4c3e7ab1e9dc53
-mycelium-transpile=64d962461551d79cf301d7177cdc931e3af00b76 tree=8b932ec942285b7898e2beb09440883b0f78a78c
-mycelium-value=85abb7c11abc7324596800bd9968c33caf25ed53 tree=05a9c1dee9fc24721c2d94b15e0c696f382de040
+mycelium-bench=91e3f6eb2bc59f4dfd04a2ff3a67eadb6aaee799 tree=4ba029831d6090379a183cc7156b4d8717d201b9
+mycelium-build=dd8adfaf78ae86dca67fe91ca383ca45421d5b4f tree=a9bbc8a8cd76df129f99581c5c03b7febd13ea05
+mycelium-check=aabdb11831f60fb3d08e89529e07ef97ddcfa1a6 tree=28319f280e4319987951aa73cb6fd5bcd8c7b378
+mycelium-cli=32cdb44daf666fd6fe8728650126b8b808cacab0 tree=cf14eb1291f7a6beb16192abfe0b9371f64e4b33
+mycelium-cli-common=28e81b67a5d21bc3bdf8904a6ce36dd9ccb515b9 tree=62bd0f17d51bbbe4bcec3e9c3eea187751bb7450
+mycelium-codegen=028dbdc7a9c29f7616595d5dd7785ee2377998d9 tree=b680709ebaeeb78f93b80b83906c15308e8befc2
+mycelium-core=57ef45b453eef1f02bdfb1f0cad1034dabd32b1f tree=997c54d5d59e80ab1d2a3069578b194113aa37fa
+mycelium-doc=74a7d2729a40cfd0ac2560a29b9024cad1e84179 tree=420ae6c6cd3df84695a1428065fba90841aa881a
+mycelium-fmt=6773da8610980552c58b437af2c456c950db30e9 tree=360a3e86f623a5c6c849d674f0fb38a15c6b7366
+mycelium-l1=f28a619b39d40db233379bc569016826f527428c tree=42ee4e740679e10d25273406e5910b5db607bd71
+mycelium-lint=6847dca0efc0fd8f3823973fced3b8ef86583b26 tree=10a7885c0e8455ed9da861b5ce43f4eda7c3d6ba
+mycelium-lsp=864d3ce3e5f50c57a996a494140ecb3816c648de tree=b5cfca336a4db20e660521c231090ac8c483b70b
+mycelium-proj=ccc1936734875d098fa99cce7570b23f1f6880e3 tree=62bebfbe515da281d6ab6d80b8da567f119fa7ac
+mycelium-runtime=ac883d2ca0f8da90dddd32ddd6385db58674e635 tree=bd9addff9cef9b9f8b0c77a22245ba2d1bda634d
+mycelium-sec=f55f65b53aa8e79a967919d2908597c65f52fee7 tree=324ac6d2d817881b2d1e37109b1f67b522eea8fc
+mycelium-spore=c5d88d90cbdd3b1b2db79715b676c60da9117352 tree=36815e93c3ef07dd0c3df88f2a3f6de17aede546
+mycelium-std-cmp=631f2d66b8be4f7e59098453e675db8b329de69e tree=42dcddee382aab0fa72e047dba0303ab7344b008
+mycelium-std-collections=444924317f259b13188f2ab03c2f210692324bcd tree=015adad0e9a8474bc014acfb9e67ad7baa1b979a
+mycelium-std-conformance=5cd426486f2d9208fac5d4103af446279e7c401d tree=c2db54a92a9535e065827ea37aa6be4d7bea32bd
+mycelium-std-content=da8e5a3aabeab6d1453c3769bd346ebbdc93477c tree=fa1aceb383a1998c6ec5e509fa314a3ce60ea329
+mycelium-std-core=19398dfd847eb9a5fc518149a714d7646abbb316 tree=dca04bc5aa079038baaee8f02a05dd56969657f4
+mycelium-std-dense=ce287fd98ae0c8638d38cd6c8f774f57c7161518 tree=261fb1e56a4768995f12e343d30919ca9f08e746
+mycelium-std-diag=0574b3db859c627c8f5d54c0e1a246cffcc2e727 tree=25a65fdf646d5afc219cd57199ab631f39a6ee15
+mycelium-std-error=cbd40b4cee36c590d88e3cd73813694d4154daf9 tree=3176e7a84d0ba8c06be039aef80ccdbd8379c8f4
+mycelium-std-fmt=aea1ec9554076e47b4138a090fc0eb19c60580aa tree=2868e60ca758bf4cf5603a118be92bbb1fb7788d
+mycelium-std-fs=e567fb3a527452fc3fd7e0565c1e205131f75ad4 tree=2f532fa599e1097fc6130c125fa4625a8125713f
+mycelium-std-io=be09a7f327b30e6585a8c09bd4f82c68e4f3de4f tree=b09b54af2ba39107193add335984acac32c374b4
+mycelium-std-iter=6000cf6742e09b410a8fda7fe81eb4e6c2bcc2eb tree=2d1a054c2d52b83896bce018c7fe5d5eec57d621
+mycelium-std-math=0ec5d1187d258d600e0704f441f474d4e505cc37 tree=f40e66d26355765f16f2e933a67fd792bbe1ea99
+mycelium-std-net=95d9559404e838b5c264b6194d545ec0408b70c0 tree=3eabf1c74cfd4e8bb4b0707fdc9bc7a11c207adf
+mycelium-std-numerics=f411b8c6d1c473efaf11b649b9921bd787069369 tree=03310f914a8d0dba22f89909fe7241c09e2834a8
+mycelium-std-rand=9db6ec950d73fd44e38cd6fe5ca9565ec3be441d tree=8944ef63912265a4934c9e2dad57f24e1fae5ad4
+mycelium-std-recover=39c864d5cfcf9d4fec57d87446797cc2062aac3c tree=f41a9b47a7c3216b076aad3862ec890852db0245
+mycelium-std-runtime=ad25a0d3e504e2b1d68afce1f66e0a52f251ddc0 tree=5b3a4ecc108e0324ba26529376ac93ec83e447b9
+mycelium-std-select=c672d85c0926edd824148342b9e6d5f15bdda3c2 tree=9952762b1674651b75691d54c762018b289a4c7c
+mycelium-std-spore=52fb3f73db4910907e5e0cbbb0f0331d48a208fd tree=f18f8a7bc7ee804f444de8c02bcd1b49b4102ff0
+mycelium-std-swap=cfc799752ad0f9fd6db6520fb3110e292737aae8 tree=10fac8bc2eef0e8815b85d3486cdf8d2eac3cb08
+mycelium-std-sys=4f4a636540e070b0b1ce4cd39bc6bf80316f38db tree=e707c362dd1acd8d7cb3f5094c99dbffc7281078
+mycelium-std-sys-host=f739fbbda2e4813a0ddac256f8e366f8aeb633d7 tree=74b2fc8701d304935c6615bcde89a49eb69fb3c3
+mycelium-std-ternary=8d0c182c1b16ad7419822b5b62f3835daa6920c9 tree=d084d53a0239b9f0ce5314dd0984b79a8ca309fb
+mycelium-std-testing=6722026dbdad767baeec69d270f548343b03a36c tree=28030a81f25f68974c95fc4e5608b18faad5845d
+mycelium-std-text=da9936536f17454def80e9ef53fb18ed4e47f391 tree=96daa1d7c21a0023f47bb7eb6075c6e64492d16b
+mycelium-std-time=180f148134cc8d0750ddf68ca612418c7a4d3713 tree=80e440f7280299ac7a7f10ba644304beaed26062
+mycelium-std-vsa=3be4787dffbc8d5c9c098ad2a7af6f6c96727046 tree=4cbb48a8892b24ca1e1ca3502e5ab9e025539dca
+mycelium-transpile=238b146e8a6b8d2917ab5d0bca624437eddc85ac tree=a2e2ef15e5310120b2e8d62469a54d8be261f1b3
+mycelium-value=fd4c3b307918fe6d58251a0b24a81e9f384d65ba tree=c9881281957a86a7ae5d9c8c150dcfcbba19f3ca
