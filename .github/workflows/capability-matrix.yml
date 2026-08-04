@@ -1,0 +1,138 @@
+# Keep the measured capability matrix fresh, automatically.
+#
+# WHY
+# docs/EXPRESSIBILITY-GAPS.md asserted measured capability status in prose, by hand, and it rotted:
+# on 2026-08-03 it still named `wild {}` not executing as THE Tier-0 blocker (mycelium-lang#16)
+# after that had been closed, called Process "ABSENT (only exit) / CRITICAL" while
+# process_spawn/wait/kill worked, and called Networking "ABSENT / CRITICAL" while std-net did real
+# TLS. Five days of planning ran off it. A schedule plus a drift gate is the structural fix;
+# "remember to update the doc" is not.
+#
+# WHAT IT DOES
+# Builds `myc` from the pinned train, runs every probe in probes/, regenerates
+# docs/CAPABILITY-MATRIX.md, and opens a PR if the matrix changed. It never pushes to main --
+# main's ruleset requires pull_request + status checks, and bypassing that would defeat the gate.
+# Same open-a-PR shape as fleet-propagate.yml.
+#
+# DRIFT IS THE POINT
+# capability-probe.sh exits 2 when an observed exit code stops matching a probe's declared
+# expectation. That is not automatically a failure of the language -- it means either behaviour
+# moved (possibly a fix landing!) or the expectation was wrong. Both need a human, so the job
+# surfaces it loudly and still opens the PR carrying the new numbers.
+name: capability-matrix
+
+on:
+  schedule:
+    # Weekly. The train moves in bursts, and a stale matrix is exactly the failure being fixed.
+    - cron: "23 5 * * 1"
+  push:
+    branches: [main]
+    # Only when something that can change the answer changes.
+    paths:
+      - "probes/**"
+      - "scripts/capability-probe.sh"
+      - "components.lock"
+      - ".github/workflows/capability-matrix.yml"
+  workflow_dispatch:
+    inputs:
+      skip_requires:
+        description: "Comma-separated environmental tags to skip (e.g. network)"
+        default: "network"
+
+concurrency:
+  group: capability-matrix
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  measure:
+    name: probe and regenerate
+    runs-on: [self-hosted, linux, x64, podman]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+
+      # The probes need a real `myc`. Build it from mycelium-cli at its pinned rev rather than
+      # trusting whatever binary might be on the runner -- the matrix records which binary it
+      # measured, so that binary has to be reproducible from the train.
+      - name: Build myc from the pinned train
+        id: build
+        run: |
+          set -eu
+          rev=$(awk '/mycelium-cli/{print $NF}' components.lock | grep -oE '[0-9a-f]{40}' | head -1 || true)
+          if [ -n "$rev" ]; then
+            echo "building mycelium-cli @ $rev (from components.lock)"
+            git clone -q https://github.com/${GITHUB_REPOSITORY_OWNER}/mycelium-cli.git "$RUNNER_TEMP/cli"
+            git -C "$RUNNER_TEMP/cli" checkout -q "$rev"
+          else
+            echo "::warning title=no pin found::components.lock has no mycelium-cli rev; building default branch tip"
+            git clone -q --depth 1 https://github.com/${GITHUB_REPOSITORY_OWNER}/mycelium-cli.git "$RUNNER_TEMP/cli"
+          fi
+          ( cd "$RUNNER_TEMP/cli" && cargo build --release )
+          myc="$RUNNER_TEMP/cli/target/release/myc"
+          test -x "$myc" || { echo "::error::myc was not produced"; exit 1; }
+          echo "myc=$myc" >> "$GITHUB_OUTPUT"
+          echo "rev=$(git -C "$RUNNER_TEMP/cli" rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Run probes and regenerate the matrix
+        id: probe
+        run: |
+          set -eu
+          # The rootless runners generally have no outbound egress -- the `standards` workflow
+          # already fails its PyYAML install for that reason -- so network probes are skipped by
+          # default here. They are still measured locally and by anyone with egress; a skipped
+          # row is recorded honestly as "not measured in this environment" rather than as drift.
+          skip="${{ github.event.inputs.skip_requires || 'network' }}"
+          set +e
+          MYC="${{ steps.build.outputs.myc }}" \
+          MYC_FEATURES="default (cargo build --release)" \
+          PROBE_SKIP_REQUIRES="$skip" \
+            bash scripts/capability-probe.sh
+          rc=$?
+          set -e
+          echo "rc=$rc" >> "$GITHUB_OUTPUT"
+          # 0 = all as-expected. 2 = drift (surface it, do not fail the job -- the PR carrying the
+          # new numbers is more useful than a red job with no artefact). Anything else is a real
+          # tooling failure and must fail loudly.
+          case "$rc" in
+            0) echo "all probes as-expected" ;;
+            2) echo "::warning title=capability drift::probe expectations no longer match observed behaviour — review the regenerated matrix" ;;
+            *) echo "::error::capability-probe.sh failed with rc=$rc"; exit "$rc" ;;
+          esac
+
+      - name: Open a PR if the matrix moved
+        run: |
+          set -eu
+          if git diff --quiet -- docs/CAPABILITY-MATRIX.md docs/capability-matrix.json; then
+            echo "matrix unchanged — nothing to open"
+            exit 0
+          fi
+          br="chore/capability-matrix-$(git rev-parse --short HEAD)"
+          if git ls-remote --exit-code --heads origin "$br" >/dev/null 2>&1; then
+            echo "branch $br already exists — a refresh is already in flight"; exit 0
+          fi
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -q -b "$br"
+          git add docs/CAPABILITY-MATRIX.md docs/capability-matrix.json
+          git commit -q -m "chore(docs): regenerate measured capability matrix" \
+            -m "Probed with myc @ ${{ steps.build.outputs.rev }}. capability-probe.sh rc=${{ steps.probe.outputs.rc }}."
+          git push -q origin "$br"
+          # Body assembled with printf. Every continuation line must stay indented inside this
+          # literal block: an unindented line ends the block scalar, and YAML then reads a leading
+          # '*' as an alias — which is exactly how an earlier revision of this file failed to parse.
+          drift_note=""
+          if [ "${{ steps.probe.outputs.rc }}" = "2" ]; then
+            drift_note=$(printf '\n\n**DRIFT DETECTED.** At least one probe stopped matching its declared expectation. That is not automatically bad — it may be a fix landing. Read the changed rows, then either update the probe expectation (behaviour intentionally changed) or file the regression.')
+          fi
+          body=$(printf 'Automated refresh of `docs/CAPABILITY-MATRIX.md` from `probes/`.\n\nProbed with `myc` @ `%s`.\nNetwork-tagged probes are skipped on the rootless runners (no egress); they appear as *skipped*, never as drift.%s\n' \
+            "${{ steps.build.outputs.rev }}" "$drift_note")
+          gh pr create --repo "${GITHUB_REPOSITORY}" --base main --head "$br" \
+            --title "chore(docs): regenerate measured capability matrix" \
+            --body "$body"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

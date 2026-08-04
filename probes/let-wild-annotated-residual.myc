@@ -1,0 +1,16 @@
+// @probe: let-wild-annotated-residual
+// @capability: `let` binding a `wild` block WITH a type annotation on the binding
+// @expect-check: 0
+// @expect-run: 70
+// @claim: not in the 2026-07-29 report — found 2026-08-03
+// @note: A REAL defect, and the dangerous shape: `myc check` reports clean, then `myc run` fails
+// @note: EX_SOFTWARE (70) with myc-run-residual "could not re-infer `let discard`'s type ... a
+// @note: `wild` block has no synthesizable type". elaborate()'s second pass loses the annotation
+// @note: that check honoured. Reproduces with a non-Unit result type, so it is orthogonal to Unit.
+// @note: WORKAROUND that works today: ascribe the block itself — `(wild { … }) : T` — see let-chain-effectful.
+// @note: Because check passes, this is a green-then-broken asymmetry: CI that only runs `myc check`
+// @note: would report this program healthy.
+nodule probe @std-sys;
+
+fn main() => Binary{64} !{ffi} =
+  let discard: Binary{64} = wild { time_mono_nanos() } in discard;

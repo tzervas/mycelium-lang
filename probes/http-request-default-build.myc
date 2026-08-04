@@ -1,0 +1,19 @@
+// @probe: http-request-default-build
+// @capability: networking (wild:http_request) reaching a live HTTPS host
+// @requires: network
+// @expect-check: 0
+// @expect-run: 0
+// @claim: EXPRESSIBILITY-GAPS s2: "Networking: socket, urllib, TLS — ABSENT — CRITICAL" (mycelium-lang#17)
+// @note: Measured 2026-08-03: the claim is materially wrong. This returns a real HTTPS 200 from
+// @note: example.com — Seq{Bytes,3} whose first element is Bytes([0, 200]) — via ureq+rustls (spike S3).
+// @note: SECURITY-RELEVANT SURPRISE: mycelium-cli declares default = ["host-registry"] and does NOT
+// @note: list net-host, yet libmycelium_std_net rlibs ARE compiled into a plain `cargo build --release`
+// @note: and http_request IS registered. So a default build carries network egress that its own
+// @note: feature flags say it lacks. Whether that is benign feature unification or an ineffective
+// @note: gate needs a human — but it is not the "off by default" posture the flags advertise.
+// @note: This probe requires OUTBOUND NETWORK. In an air-gapped runner it will fail on connect,
+// @note: which is a false DRIFT — gate it out there rather than weakening the expectation.
+nodule probe @std-sys;
+
+fn main() => Bytes !{ffi} =
+  wild { http_request("GET", "https://example.com/", "", "", 0b0000_0000_0000_0000_0000_0000_0000_0000) };

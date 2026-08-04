@@ -1,0 +1,14 @@
+// @probe: let-chain-effectful
+// @capability: nested `let … in` sequencing of multiple effectful host calls
+// @expect-check: 0
+// @expect-run: 0
+// @claim: EXPRESSIBILITY-GAPS s3.1: "Multi-statement bodies — 38+ gaps. Only single-tail / simple let bodies emit cleanly."
+// @note: The claim understates reality: nested let-in chains work to depth 10+, INCLUDING
+// @note: effectful wild calls and discard bindings, all check-clean and run-clean.
+// @note: The ascription `(wild { … }) : T` is what avoids let-wild-unascribed-residual.
+nodule probe @std-sys;
+
+fn main() => Binary{64} !{ffi} =
+  let _ = (wild { time_mono_nanos() }) : Binary{64} in
+  let b = (wild { time_mono_nanos() }) : Binary{64} in
+  b;

@@ -1,0 +1,11 @@
+// @probe: let-wild-unannotated
+// @capability: `let` binding a `wild` block with NO type annotation and NO ascription
+// @expect-check: 65
+// @expect-run: 65
+// @note: Correct never-silent behaviour, NOT a bug: a wild body is audited, not type-checked, so it
+// @note: has no synthesizable type and check refuses rather than guessing (G2).
+// @note: Contrast let-wild-annotated-residual, where check PASSES and elaboration then fails —
+// @note: that one is the real defect.
+nodule probe @std-sys;
+
+fn main() => Binary{64} !{ffi} = let x = wild { time_mono_nanos() } in x;

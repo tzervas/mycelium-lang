@@ -1,0 +1,13 @@
+// @probe: unit-as-main-result
+// @capability: `myc run` executing a main whose result is a data/ADT value (here Unit)
+// @expect-check: 0
+// @expect-run: 65
+// @claim: EXPRESSIBILITY-GAPS s3.1 bullet 1: "No unit value ()" (l1#6) — MISLEADING as phrased
+// @note: `Unit` DOES exist (PRELUDE_UNCONDITIONAL_TYPE_NAMES = ["Bool","Unit"]) and type-checks.
+// @note: The real gap is at the CLI: mycelium-cli calls Interpreter::eval(), which refuses any
+// @note: CoreValue::Data with EvalError::DataResult. eval_core() would accept it but is never
+// @note: called by the CLI. So this is a mycelium-cli gap, NOT a language gap.
+// @note: This probe should DRIFT to run=0 the day the CLI calls eval_core — that drift is the fix landing.
+nodule probe;
+
+fn main() => Unit = Unit;

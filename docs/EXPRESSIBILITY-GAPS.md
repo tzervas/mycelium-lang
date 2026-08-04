@@ -9,6 +9,74 @@
 | **Companion plans** | [`docs/planning/PORT-READINESS-2026-07-22.md`](./planning/PORT-READINESS-2026-07-22.md), monorepo `docs/planning/self-hosting-port-ledger.md`, monorepo `docs/planning/road-to-1.0.0-and-mycelium-rewrite.md` |
 | **Honesty** | Coordination + measured inventory. Not a SemVer / DN-88 production claim. Prefer **unknown / needs human** over false closure. |
 
+> [!IMPORTANT]
+> **Status claims in this document are superseded by [`CAPABILITY-MATRIX.md`](./CAPABILITY-MATRIX.md).**
+> That file is **generated** by `scripts/capability-probe.sh` from executable probes in `probes/`
+> and is stamped with the binary it measured. This document keeps the narrative, the non-goals and
+> the prioritisation — the things a program cannot measure. It should not assert capability status
+> in prose again; that is what rotted (see §0).
+
+## 0. Measured correction — 2026-08-03
+
+This roadmap was written 2026-07-29 and its **measured** claims went stale within days. Re-measured
+2026-08-03 by executing programs against a `myc` built from the pinned train. Corrections, worst
+first, because three of them were the roadmap's own top-severity items:
+
+| §  | Claim as written | Measured 2026-08-03 |
+|----|------------------|---------------------|
+| 1.2(1), 2 | "`wild {}` type-checks but does not execute" — **the Tier-0 linchpin blocking all of S1** (`#16`) | **CLOSED.** `wild { time_mono_nanos() }` checks clean and runs; three consecutive runs returned three *different* `Binary{64}` values, so a real monotonic host clock is dispatching. `wild { rand_fill(…) }` returns real entropy. Full path works: check → effect check → elaboration → interp dispatch → `std-sys-host` table → OS. |
+| 2 | Process → "**Absent** (only `exit`)" → **Critical** (`#19`) | **CLOSED.** `process_spawn`/`process_wait`/`process_kill` are registered in `mycelium-std-sys-host/src/host_registry.rs` with documented encodings and a host `ProcessTable`. Verified end-to-end: spawn `/bin/true`, reap, decode the exit triple. |
+| 2 | Networking → "**Absent**" → **Critical** (`#17`) | **CLOSED, with a caveat that is not the documented one.** `wild { http_request(…) }` returns a real HTTPS **200** from a live host via `ureq`+rustls (spike S3). See the feature-gate surprise below. |
+| 3.1 | "No unit value `()`" — 13+ gaps | **Misleading as phrased.** `Unit` exists in the prelude (`PRELUDE_UNCONDITIONAL_TYPE_NAMES = ["Bool","Unit"]`) and type-checks. Only the `()` *spelling* is absent. The real defect is elsewhere — see "CLI cannot return data values" below. |
+| 3.1 | "Multi-statement bodies — 38+ gaps. Only single-tail / simple `let` bodies emit cleanly." | **Understated the cause.** Nested `let … in` chains work to depth 10+ *including* effectful `wild` calls. The actual boundary: Mycelium has exactly **one** sequencing production, `let PAT = EXPR in TAIL`, with no brace block-expression and no `;`-separated statement form. An ergonomics/grammar gap, not an expressiveness cliff. |
+| 3.1 | "No method-call sugar `x.m()`" — 31+ gaps | **Still open**, and confirmed to be a *parser/grammar* gap: the dot token needs a production allowing it as a general postfix operator, distinct from (or unifying with) the module-qualified-path production (M-662). |
+| 7.5 | "I/O reactor vs blocking-hypha — design choice still open; **needs maintainer input**" | **Decided 2026-08-01** in `planning/SPIKE-RESOLUTIONS-2026-08-01.md`: blocking-hypha for v0. Host ops may block their OS thread; reactor integration is explicitly post-S1. `host_registry.rs` already implements it. (S1 registry home and S3 TLS stack were closed in the same doc.) |
+
+### Gaps this roadmap did not record, found while re-measuring
+
+1. **No pure-std linkage from `.myc` source — the largest structural gap, and it reframes WP-2.**
+   A real, tested, pure `Value`↔JSON codec exists (`mycelium-std-io/src/serialize.rs`: serde_json
+   backed, proptest round-trip, never-silent NaN/Inf refusal) — and is **unreachable**. Nothing in
+   `interp`, `check` or `l1` depends on `mycelium-std-io`, and L1 has **no import/module construct
+   at all** beyond the atomic `@std-sys` marker that gates `wild`. There is no `use std.io;`.
+   Calling `to_json(…)` from `.myc` fails with `unknown function/constructor/prim` — the same error
+   a fabricated identifier produces. So **all 26 pure `mycelium-std-*` crates are unreachable from
+   Mycelium source**; the only door into Rust is the audited FFI floor.
+   **Consequence:** WP-2 item 6's framing — codecs are "pure, can start early" — does not hold.
+   Nothing can *call* a codec until a pure-linkage surface exists. That surface, not TOML, is the
+   work. TOML is separately absent for user data (`mycelium-proj` ships a dependency-free
+   TOML-*subset* reader used only for its own manifest, not a `Value`↔TOML codec).
+
+2. **`myc run` cannot return a data/ADT value.** `mycelium-cli` calls `Interpreter::eval()`, which
+   refuses any `CoreValue::Data` with `EvalError::DataResult`. `eval_core()` would accept it but is
+   never called by the CLI. So `fn main() => Unit = Unit;` checks clean and then fails at run. This
+   is a **CLI** gap, not a language gap, and it is what §3.1's "no unit value" bullet is really
+   gesturing at. It is also why the empty-`Bytes`-as-unit convention (per `process_kill`) works:
+   `Bytes` is `CoreValue::Repr`, which `eval()` accepts.
+
+3. **`let`-bound `wild` with an annotated binding: check passes, run fails.**
+   `let discard: Binary{64} = wild { … } in discard` is check-clean, then fails `EX_SOFTWARE` (70)
+   with `myc-run-residual` "could not re-infer `let discard`'s type". `elaborate()`'s second pass
+   loses the annotation `check` honoured. Reproduces with non-`Unit` result types, so it is
+   orthogonal to (2). Dangerous shape: **CI that runs only `myc check` reports such a program
+   healthy.** Workaround that works today: ascribe the block itself — `(wild { … }) : T`.
+
+4. **Declared result types are not enforced across a `wild` boundary (soundness).**
+   A function may declare `=> Bytes` while the host op returns `Seq{elem:Bytes,len:3}`; both check
+   and run report success and the wrong-typed value flows into ordinary code. Independently
+   reproduced by ascribing a clock op to `Unit` — checks, runs, prints the raw `Binary{64}`.
+   Defensible as an audited-floor design choice, but currently undocumented, and in tension with
+   the G2 "never silent" posture.
+
+5. **`net-host` is off by default yet networking is compiled in.** `mycelium-cli` declares
+   `default = ["host-registry"]` and does *not* list `net-host`, but a plain `cargo build --release`
+   produces `libmycelium_std_net` artefacts and a working `http_request`. A default build therefore
+   carries **network egress its own feature flags say it lacks**. Whether that is benign feature
+   unification or an ineffective gate needs a human; either way the advertised posture is wrong.
+
+Each of the above is encoded as an executable probe, so none of them can silently drift again.
+
+
 This document is the **umbrella expressibility map**: what the Rust component train can do today, how far the `*-myc` self-hosting seeds have come, where Mycelium sits relative to Python-ecosystem expectations and full-language expressibility, and the prioritized work packages to reach a **fully developed / staged** Mycelium.
 
 Per-component short status files (`GAP-STATUS.md`) on key Rust repos point back here.
@@ -276,3 +344,4 @@ Collected via `gh issue list --state open` on primary + key std component repos 
 | Date | Note |
 |------|------|
 | 2026-07-29 | Initial umbrella expressibility gap roadmap + issue inventory snapshot |
+| 2026-08-03 | Re-measured by execution (§0). Three top-severity items were already closed (`#16` FFI, process, networking); found the pure-std linkage gap, the CLI data-result refusal, a `let`+`wild` elaboration defect, a `wild`-boundary type-soundness hole, and a `net-host` feature-gate leak. Status claims moved out of prose into generated [`CAPABILITY-MATRIX.md`](./CAPABILITY-MATRIX.md) so they cannot rot again. |

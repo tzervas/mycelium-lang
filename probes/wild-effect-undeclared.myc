@@ -1,0 +1,8 @@
+// @probe: wild-effect-undeclared
+// @capability: an undeclared `ffi` effect is refused (RFC-0014 s4.5 I3, no undeclared effects)
+// @expect-check: 65
+// @expect-run: 65
+// @note: Same G2 posture as the @std-sys gate: the effect must be declared, never inferred silently.
+nodule probe @std-sys;
+
+fn main() => Binary{64} = wild { time_mono_nanos() };

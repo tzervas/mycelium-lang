@@ -1,0 +1,11 @@
+// @probe: wild-executes-clock
+// @capability: `wild {}` dispatches a registered host op and returns a real value
+// @expect-check: 0
+// @expect-run: 0
+// @claim: EXPRESSIBILITY-GAPS 2026-07-29 s1.2(1): "`wild {}` type-checks but does not execute" (mycelium-lang#16, THE Tier-0 linchpin blocking stage S1)
+// @note: Measured 2026-08-03: CLOSED. Three consecutive runs returned three DIFFERENT Binary{64}
+// @note: values, proving a real monotonic host clock rather than a stub.
+// @note: Path exercised: l1 check -> effect check -> elaboration -> interp dispatch -> std-sys-host table -> OS.
+nodule probe @std-sys;
+
+fn main() => Binary{64} !{ffi} = wild { time_mono_nanos() };
