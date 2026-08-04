@@ -27,7 +27,7 @@ on:
 
 concurrency:
   group: ci-umbrella-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 permissions:
   contents: read
