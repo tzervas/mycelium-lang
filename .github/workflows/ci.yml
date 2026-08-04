@@ -19,9 +19,9 @@ on:
         type: boolean
         default: false
   push:
-    branches: [main]
+    branches: [main, master, dev]
   pull_request:
-    branches: [main]
+    branches: [main, master, dev]
   schedule:
     - cron: "17 6 * * 0"
 
