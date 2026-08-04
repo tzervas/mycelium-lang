@@ -1,0 +1,174 @@
+{
+ "id": "PKG-CI-TRUTH",
+ "title": "CI truthfulness: stop reporting green on work that never ran",
+ "wp": "WP-13",
+ "priority": "P0",
+ "status": "pre-freeze",
+ "hub_issue": "https://github.com/tzervas/mycelium-lang/issues/48",
+ "title_prefix": "train/gap-closure:",
+ "goal": "Close gaps (9)(10)(11): stop the fleet from reporting green on work that never ran. Sequence behind ap-workflows PR #30 (merged) + its image republish, then: (a) swap all 45 `*-myc` `placeholder` CI jobs for a real `myc-check` gate via reusable-ci-mycelium.yml (project-dir: lib, deny-warnings: true, acknowledge-not-adopted: true) targeting `dev`; (b) migrate the 49 non-umbrella real-CI Rust component repos (of the 50 REAL-classified repos, excluding the umbrella `mycelium-lang`) from bespoke ci.yml onto reusable-ci-rust.yml with ecosystem-lock-ref wired; (c) ship the missing reusable-train-lane.yml (validates a work-package JSON against schemas/work-package.schema.json and comments the linked hub issue) in ap-workflows; (d) make mycelium-bench's CI actually invoke its own `cargo run --release --bin bench` harness and assert a non-trivial report, so the fleet's `bench=run must FAIL_ENV without a device` posture has something real to gate; (e) produce a measured, human-reviewable verdict on the net-host feature-gate leak (does a default `mycelium-cli` build carry live `http_request` registration despite `net-host` being off?) plus a regression check that makes the answer machine-checkable going forward.",
+ "non_goals": [
+  "Writing the real `build`/`test` steps inside reusable-ci-mycelium.yml \u2014 those are deliberate loud PLACEHOLDER failures blocked on the DN-50 accept<->instantiate gap (language gaps 1-8); do not flip `depth` past `check` for any `*-myc` caller in this package.",
+  "Fixing the 13+ myc-check findings the newly-real gate will surface across the *-myc train (44% trace to gap 1, no import/module mechanism) \u2014 this package makes the debt VISIBLE, not paid off.",
+  "Re-deriving or fixing the root cause of the net-host leak \u2014 (e) delivers measurement + verdict + a regression trip-wire, not a guessed fix, unless the human verdict explicitly authorizes one.",
+  "Migrating `mycelium-lang` / `mycelium-lang-myc` (the umbrella monorepo): they already run a real, different job model (`lock-format` + OS/arch draw-in matrix, self-hosted, `dev`+`main`+schedule triggers) that this package's caller templates do not fit \u2014 flagged for a separate human decision, not touched here.",
+  "The general fleet-wide `fleet-ci.yml`/`fleet-security.yml` centralization (detect-stack/gitleaks/trivy) \u2014 that is a separate, already-in-flight track (`scripts/rollout-callers.sh`) unrelated to the Mycelium-specific reusables this package adopts.",
+  "Adding GPU-backed benchmark cases to mycelium-bench, or deciding whether any Mycelium backend needs a GPU device at all \u2014 out of scope; flagged unknown for human call in lane risk notes.",
+  "Publishing to crates.io (ADR-018, permanently off) or building the mycelium-spore registry integration."
+ ],
+ "surfaces": [
+  "S-MYC-CI-CALLER",
+  "S-RUST-CI-CALLER",
+  "S-TRAIN-LANE",
+  "S-BENCH-GATE",
+  "S-NET-HOST-CHECK"
+ ],
+ "lanes": [
+  {
+   "id": "L-ZIP",
+   "repo": "tzervas/mycelium-lang",
+   "role": "zipper",
+   "branch_hint": "train/ci-truth-zip",
+   "depends_on_lanes": [],
+   "deliverables": [
+    "Freeze S-MYC-CI-CALLER in docs/planning/orchestration/surfaces/S-MYC-CI-CALLER.md (signature + rationale only)",
+    "Freeze S-RUST-CI-CALLER in docs/planning/orchestration/surfaces/S-RUST-CI-CALLER.md (signature + rationale only)",
+    "Freeze S-TRAIN-LANE in docs/planning/orchestration/surfaces/S-TRAIN-LANE.md (signature + rationale only)",
+    "Freeze S-BENCH-GATE in docs/planning/orchestration/surfaces/S-BENCH-GATE.md (signature + rationale only)",
+    "Freeze S-NET-HOST-CHECK in docs/planning/orchestration/surfaces/S-NET-HOST-CHECK.md (signature + rationale only)",
+    "Contract tests may be #[ignore] until implementers land"
+   ],
+   "depends_on_surface": "",
+   "checkable_done": "All surface files merged; no implementer lane starts before this."
+  },
+  {
+   "id": "L-TZERVAS-AP-WORKFLOWS",
+   "repo": "tzervas/ap-workflows",
+   "role": "implementer",
+   "branch_hint": "train/ci-truth-tzervas-ap-workflows",
+   "depends_on_lanes": [
+    "L-ZIP"
+   ],
+   "deliverables": [
+    "Merge PR #30 (already OPEN/CLEAN/MERGEABLE, verified: builds, 3.49MB static musl myc-check, reproduces exit 3/13 findings). Confirm the push-triggered image-runner-base rebuild republishes `ghcr.io/tzervas/ap-workflows/runner-base:latest` (workflow already auto-sets push:true and extra-tags:latest on `refs/heads/main` push \u2014 verify the run, don't assume). Land S-TRAIN-LANE (new reusable-train-lane.yml + a self-test invoking it against a fixture package JSON, dirty and clean, mirroring this repo's own standards_selftest.py convention). Extend the existing rollout tooling (new script, e.g. scripts/rollout-mycelium-callers.sh, modeled on scripts/rollout-callers.sh's dry-run/APPLY/DRAFT pattern) to generate S-MYC-CI-CALLER and S-RUST-CI-CALLER callers per-repo, and extend scripts/sync-required-contexts.sh (or a sibling script) to also remap the bare `check` context (used today directly, in-repo, by all 94 target repos) to `<caller-job-name> / check` on each repo's `dev` branch protection \u2014 the existing script only remaps the unrelated fleet-ci/fleet-security generic contexts."
+   ],
+   "depends_on_surface": "S-MYC-CI-CALLER",
+   "checkable_done": "PR #30 shows merged (not just mergeable) via `gh pr view 30 -R tzervas/ap-workflows --json state` = MERGED. `gh run list -R tzervas/ap-workflows -w image-runner-base.yml -b main` shows a success run after the merge, and `ghcr.io/tzervas/ap-workflows/runner-base:latest` layer listing contains /usr/local/bin/myc-check. reusable-train-lane.yml exists, its self-test job passes on a clean fixture and fails on a fixture missing a required schema field. Dry-run of the new rollout script against the 45+49 target lists enumerates exactly those repos (cross-checked against the measured ci-classify data: 45 STUB/placeholder, 49 REAL excluding mycelium-lang)."
+  },
+  {
+   "id": "L-TZERVAS-MYC-45-REPOS",
+   "repo": "tzervas/*-myc (45 repos: mycelium-bench-myc, mycelium-build-myc, mycelium-check-myc, mycelium-cli-common-myc, mycelium-cli-myc, mycelium-codegen-myc, mycelium-core-myc, mycelium-doc-myc, mycelium-fmt-myc, mycelium-l1-myc, mycelium-lint-myc, mycelium-lsp-myc, mycelium-proj-myc, mycelium-runtime-myc, mycelium-sec-myc, mycelium-spore-myc, mycelium-transpile-myc, mycelium-value-myc, and the 27 mycelium-std-*-myc crates \u2014 full list is the measured STUB set, excluding mycelium-compiler-myc and mycelium-lang-myc which are already REAL, non-placeholder)",
+   "role": "implementer",
+   "branch_hint": "train/ci-truth-tzervas-myc-45-repos-myceliu",
+   "depends_on_lanes": [
+    "L-ZIP"
+   ],
+   "deliverables": [
+    "Mechanical, script-generated PR per repo (one PR per repo, never batched \u2014 matches ap-workflows' own rollout convention): replace the `placeholder` job body with the S-MYC-CI-CALLER caller block; add `pull_request` trigger; retarget `push`/`pull_request` branches from `[main]` to `[dev]`. No hand design per repo \u2014 this is the frozen template applied, not 45 separate zipper decisions."
+   ],
+   "depends_on_surface": "S-MYC-CI-CALLER",
+   "checkable_done": "`gh api` scan of all 45 repos' default workflow file shows zero jobs literally named `placeholder` and zero `ls -la lib || true` / `echo \"myc-check optional...\"` lines remaining. Each repo's `check` job (reached as `<caller>/check`) runs and reports its REAL myc-check exit code \u2014 spot-check mycelium-core-myc reproduces the same exit 3 / 13 findings measured against the standalone binary in PR #30's description. `dev` branch protection on each repo requires the new `<caller>/check` context and no longer references `placeholder`."
+  },
+  {
+   "id": "L-TZERVAS-49-REAL-COMP",
+   "repo": "tzervas/<49 real component repos> (mycelium-bench, mycelium-build, mycelium-check, mycelium-cli, mycelium-cli-common, mycelium-codegen, mycelium-compiler-myc, mycelium-core, mycelium-doc, mycelium-fmt, mycelium-l1, mycelium-lint, mycelium-lsp, mycelium-proj, mycelium-runtime, mycelium-sec, mycelium-spore, mycelium-std-sys, mycelium-std-sys-host, mycelium-std-net, mycelium-transpile, mycelium-value, and the 27 pure mycelium-std-* crates \u2014 the measured REAL set, excluding umbrella mycelium-lang/mycelium-lang-myc)",
+   "role": "implementer",
+   "branch_hint": "train/ci-truth-tzervas-49-real-component-re",
+   "depends_on_lanes": [
+    "L-ZIP"
+   ],
+   "deliverables": [
+    "Mechanical, script-generated PR per repo: replace the bespoke `dtolnay/rust-toolchain` + fmt/clippy/test ci.yml with the S-RUST-CI-CALLER caller; retarget triggers to `[dev]`; carry forward any repo-specific extra step (mycelium-cli's `--features net-host` test) verbatim rather than dropping it; wire `ecosystem-lock-ref` to the pinned mycelium-lang components.lock ref per the 2026-08-01 materializer decision."
+   ],
+   "depends_on_surface": "S-RUST-CI-CALLER",
+   "checkable_done": "`gh api` scan shows zero of the 49 repos still carry a hand-written `cargo fmt --check`/`cargo clippy .. -D warnings`/`cargo test` sequence directly in .github/workflows/ci.yml \u2014 each is a thin `uses:` caller. Each repo's CI now runs on the self-hosted `[self-hosted,linux,x64,podman]` labels, not `ubuntu-latest`. `dev` branch protection requires `<caller>/check`; `main` branch protection requires nothing (per the 2026-08-01 'main carries no required checks, dev requires check' decision) \u2014 verifiable via `gh api repos/{o}/{r}/branches/{main,dev}/protection`."
+  },
+  {
+   "id": "L-TZERVAS-MYCELIUM-BEN",
+   "repo": "tzervas/mycelium-bench",
+   "role": "implementer",
+   "branch_hint": "train/ci-truth-tzervas-mycelium-bench",
+   "depends_on_lanes": [
+    "L-ZIP"
+   ],
+   "deliverables": [
+    "On top of this repo's lane-3 migration, add the S-BENCH-GATE steps (real `cargo run --release --bin bench` invocation + non-trivial-report assertion + artifact upload) to its caller workflow."
+   ],
+   "depends_on_surface": "S-BENCH-GATE",
+   "checkable_done": "A `dev`-targeting CI run produces and uploads `reports/latest-report.md`/`.json` with `run.cases` length > 0. A deliberately-emptied corpus (tested once locally or in a throwaway branch, then reverted \u2014 never left in the merged state) makes the 'assert non-trivial report' step fail, proving the guard is not vacuous. The step is documented as measuring interp/AOT-env-machine/JIT/direct-LLVM backends per the harness's own description; mlir-dialect stays off by default and its graceful toolchain-absent Skip is distinguished in the report from a hard failure."
+  },
+  {
+   "id": "L-TZERVAS-MYCELIUM-CLI",
+   "repo": "tzervas/mycelium-cli",
+   "role": "implementer",
+   "branch_hint": "train/ci-truth-tzervas-mycelium-cli",
+   "depends_on_lanes": [
+    "L-ZIP"
+   ],
+   "deliverables": [
+    "Measure the net-host leak directly (cargo tree, binary symbol/string inspection, and a direct `myc run` repro with default features and no `@std-sys wild:http_request` call in source) and write `docs/NET-HOST-GATE-VERDICT.md` recording the measurements verbatim and one of the two explicit verdicts. Land the S-NET-HOST-CHECK CI assertion once the verdict is human-reviewed (the assertion's direction \u2014 'must not appear' vs 'documented as expected and tracked' \u2014 depends on the verdict, so this step must not be authored before sign-off)."
+   ],
+   "depends_on_surface": "S-NET-HOST-CHECK",
+   "checkable_done": "`docs/NET-HOST-GATE-VERDICT.md` exists, is merged, and contains: (1) raw `cargo tree` output for a default-feature build, (2) the binary-inspection command and its raw output, (3) a repro transcript of `myc run` against a wild-http-free program with default features, (4) one explicit verdict sentence tagged benign-or-ineffective, (5) sign-off attribution distinct from the implementer. The corresponding CI assertion step is present in the migrated caller and its current pass/fail state matches the documented verdict (a 'benign' verdict ships a step that currently passes; an 'ineffective gate' verdict ships a step that currently FAILS loudly rather than being silently omitted, per the project's own never-silent posture)."
+  }
+ ],
+ "blocked_by": [
+  "Human/orchestrator approval to merge tzervas/ap-workflows PR #30 (code is ready and CLEAN/MERGEABLE now; merging it is a decision this sub-planner cannot make).",
+  "Orchestrator opening a hub issue for PKG-CI-TRUTH in tzervas/mycelium-lang and assigning it a package status per the schema \u2014 required by the kickoff rule before any implementer starts; not yet done as of this design."
+ ],
+ "unblocks": [
+  "Any future package that adds real `build`/`test` steps to reusable-ci-mycelium.yml once the DN-50 accept<->instantiate gap (language gaps 1-8, especially the import/module keystone) closes \u2014 that package needs a working `check` gate to build on first.",
+  "Trustworthy branch protection for the entire *-myc train (today's `placeholder` gate cannot be trusted for anything; a real myc-check gate can).",
+  "mycelium-bench becoming a real regression gate for future AOT/codegen work (gap 7) and for the eventual GPU/FAIL_ENV posture, once/if a GPU-dependent backend exists.",
+  "A decisive, documented answer to whether the net-host feature-gate leak needs a real fix \u2014 currently blocking anyone from trusting `net-host` as an actual security boundary."
+ ],
+ "success_criteria": [
+  "ap-workflows PR #30 is merged and `ghcr.io/tzervas/ap-workflows/runner-base:latest` provably contains a static myc-check (verified post-merge, not inferred from the PR description).",
+  "`gh api` (or an equivalent scripted scan) over all 95 `tzervas/mycelium*` repos finds zero jobs literally named `placeholder` outside of mycelium-lang/mycelium-lang-myc, which are explicitly excluded and separately flagged.",
+  "All 45 former-`placeholder` repos' CI job reports a real myc-check exit code on both push and pull_request against `dev`; at least one spot-checked repo (mycelium-core-myc) reproduces the previously-measured exit 3 / 13 findings.",
+  "Zero of the 49 real component repos (excluding the umbrella) still hand-roll `cargo fmt/clippy/test` in their own workflow file; all compose off `tzervas/ap-workflows/.github/workflows/reusable-ci-rust.yml@v0.1`.",
+  "`dev` branch protection on every migrated repo requires the new `<caller>/check` context; `main` branch protection requires nothing, matching the 2026-08-01 decision \u2014 checkable via `gh api repos/{o}/{r}/branches/{b}/protection`.",
+  "`reusable-train-lane.yml` exists in ap-workflows, is invoked by a new caller in mycelium-lang on changes under docs/planning/orchestration/packages/**, and its self-test demonstrates both a pass (clean fixture) and a fail (fixture missing a required schema field).",
+  "mycelium-bench's CI produces `reports/latest-report.json` with `run.cases` length > 0 on every `dev`-targeting run, and this was proven non-vacuous by a reverted throwaway commit that emptied the corpus and observed the job fail.",
+  "`docs/NET-HOST-GATE-VERDICT.md` is merged in mycelium-cli with raw measurement output and one explicit, human-reviewed verdict sentence; a corresponding CI assertion exists whose pass/fail state matches that verdict.",
+  "No caller in this package sets `depth` (or equivalent) past `check` for any `*-myc` repo, and no PLACEHOLDER build/test step in reusable-ci-mycelium.yml was modified \u2014 verifiable by diffing reusable-ci-mycelium.yml before/after this package (should be unchanged)."
+ ],
+ "adversarial_checklist": [
+  "Do the caller blocks use the ACTUAL existing input names (`project-dir`, not `project-root`; verified against the live YAML) \u2014 no invented interface?",
+  "Is `check` preserved as the sole job name at every caller (both reusable-ci-mycelium.yml and reusable-ci-rust.yml call sites) \u2014 a rename silently un-gates the whole train per both workflows' own header comments?",
+  "Was any `*-myc` caller PR opened/merged BEFORE ap-workflows PR #30 merged and the image republished? (Sequencing violation \u2014 produces the misleading 'myc-check not found on this runner' failure instead of a real finding.)",
+  "Does every migrated repo's `dev` branch protection get repointed to the new `<caller>/check` context in the SAME train as the caller PR \u2014 not left dangling on a context that will never report again (the fail-closed window this repo's own sync-required-contexts.sh documents)?",
+  "Is `acknowledge-not-adopted: true` still required and un-defaulted in reusable-ci-mycelium.yml \u2014 was the workflow's own refusal-to-run-unacknowledged step left intact, not 'fixed away' to make onboarding quieter?",
+  "Are mycelium-lang and mycelium-lang-myc excluded from the bulk migration, with their divergent lock-format/draw-in-matrix job model left untouched and explicitly flagged for separate human review?",
+  "Does mycelium-bench's new gate actually invoke `cargo run --release --bin bench` (not merely `cargo bench --no-run` against nonexistent Criterion targets, which would be silently vacuous again)?",
+  "Was the mycelium-bench 'non-vacuous' proof (empty-corpus commit that fails, then reverted) actually performed and is there evidence (a linked CI run) rather than an assertion?",
+  "Is the net-host verdict document's sign-off attributed to someone other than the implementing agent, and does the shipped CI assertion's direction (must-not-appear vs. documented-and-failing) match the verdict rather than being pre-decided?",
+  "Are any of the 94 generated caller PRs batched into a single mega-PR, violating the 'ONE PR per repo, never batched' convention this train already uses?",
+  "Does any generated caller introduce `apt-get`/package-install steps into a non-image-build job, violating the rootless/no-new-privs runner constraint?",
+  "Is `ecosystem-lock-ref` used (not raw git-rev edits to individual Cargo.toml files) for any cross-repo pin change touched by this package, per the no-path-deps / git-dep-pins constraint?"
+ ],
+ "requires_repin": false,
+ "fleet": {
+  "runner_labels": [
+   "self-hosted",
+   "linux",
+   "x64",
+   "podman"
+  ]
+ },
+ "kickoff_prompt": "You are an implementer on PKG-CI-TRUTH lane <LANE_ID>, hub https://github.com/tzervas/mycelium-lang/issues/48. Touch ONE repo only. Work against the FROZEN surfaces in docs/planning/orchestration/surfaces/ \u2014 if a surface needs changing, stop and say so; do not rename or widen a frozen signature. The repo's prose docs are STALE: trust docs/CAPABILITY-MATRIX.md and probes/ over any narrative claim. Open one green-CI PR in your lane's repo; never edit a foreign repo in the same PR. Your lane is done only when its checkable_done holds. Prefer 'unknown / needs human' over false closure.",
+ "provenance": {
+  "designed": "2026-08-04",
+  "method": "sonnet sub-planner workflow wf_3b412561-c1d, designed against MEASURED behaviour",
+  "effort_estimate": "XL",
+  "risks": [
+   "Turning `deny-warnings: true` on for all 45 *-myc repos makes them red immediately and by design (13+ findings already measured in just one repo; only 4/8 scanned repos are clean) \u2014 this WILL read as a mass regression to anyone not briefed on the plan; needs a heads-up/communication step alongside the rollout, not a design change.",
+   "Required-status-check renaming has a fail-closed window across up to 94 repos; sequencing branch-protection updates wrong (or too slowly) blocks unrelated PRs fleet-wide until the ruleset catches up. Mitigate by following the existing script's documented order (caller merges first, ruleset second) and batching, not big-banging, the rollout.",
+   "mycelium-bench's real corpus, once actually run in CI, may surface genuine interp-vs-AOT capability/correctness LOSSes \u2014 that is a correct and expected outcome of closing this gap, not a defect in this package, but could be mistaken for 'this package broke bench.'",
+   "The net-host leak's root cause is genuinely unknown from this package's evidence (manifest-level inspection shows no obvious misconfiguration); lane 5 may legitimately conclude only 'measured, verdict pending further engineering,' and success criteria must accept a documented-and-escalated outcome as valid rather than forcing a guessed code fix.",
+   "Self-hosted fleet capacity: moving up to 94 repos' CI from GitHub-hosted `ubuntu-latest` onto the self-hosted rootless podman fleet simultaneously is a queueing/capacity risk if the fleet is small; roll out in waves, watch queue depth, not one mass PR wave.",
+   "Scale mismatch with the 'one lane per repo' rule: this package genuinely touches ~94 component repos. Treating each as a hand-designed zipper lane would be an enormous planning tax for zero-design mechanical work; this design deliberately collapses them into two script-generated batches (lanes 2 and 3) governed by one frozen template each \u2014 flagging this explicitly since it is a deviation from strict one-decision-per-repo, done for the reason ap-workflows' own rollout-callers.sh already established as correct for exactly this shape of change.",
+   "GPU/FAIL_ENV applicability to mycelium-bench specifically is unconfirmed \u2014 no backend in the repo currently requires a device (mlir-dialect gracefully Skips on toolchain absence, which is not the same as a GPU device check). Do not fabricate a GPU job for mycelium-bench in this package; leave it flagged unknown pending a human decision on whether any backend will ever need one."
+  ]
+ }
+}

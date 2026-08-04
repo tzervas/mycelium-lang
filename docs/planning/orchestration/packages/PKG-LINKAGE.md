@@ -1,0 +1,87 @@
+# PKG-LINKAGE — Typed prim linkage: call Rust from .myc with a CHECKED signature
+
+| Field | Value |
+|---|---|
+| **WP** | WP-10 |
+| **Priority** | P0 |
+| **Status** | pre-freeze |
+| **Hub** | https://github.com/tzervas/mycelium-lang/issues/44 |
+| **Effort** | L |
+| **Requires re-pin** | yes |
+
+## Goal
+
+Give .myc source a second, TYPED door into Rust: a `use`-resolved, effect-declared typed-prim import that `myc check` verifies (arity + per-arg/result Ty + declared effects) against a registered signature, instead of `wild`'s current ascription-on-faith. Ship it end-to-end for two real crates (mycelium-std-io's to_json/from_json/serialize/deserialize, and mycelium-std-net's http as a checked, non-wild surface) so the mechanism is proven, not just designed. `wild` itself is untouched (additive-only) and reverts to being the audited floor-authoring escape once safe http exists beside it.
+
+## Non-goals
+
+- Does not fix wild's own boundary-type-enforcement defect (measured defect #4: an fn ascribed to one type but a wild op returning another checks+runs clean). wild stays ascription-trusted by design (ADR-014); that is a separate hardening package.
+- Does not fix the let+wild elaboration residual-type defect (#3) for the EXISTING wild path. The CLI lane's single-source-of-truth wiring (one install_typed_std call feeding both check-time and run-time) forecloses an ANALOGOUS defect for the NEW typed-prim path, but does not touch wild's own elaborate() bug.
+- Does not wire mycelium-proj's [dependencies] manifest to populate Phyla for arbitrary cross-repo .myc-to-.myc phyla. DN-113/M-1060 cross-phylum use is implemented and tested inside mycelium-l1's library API (check_phylum_with_deps/Phyla) but mycelium-cli's assemble_and_check_phylum calls plain check_phylum today (verified by reading mycelium-cli/src/lib.rs) -- this package keeps Phyla::default() and does not wire real multi-phylum manifests into the CLI. That is a separate, already-partly-built package.
+- Does not close the 9 of 11 unknown-type findings that name Value/Repr/Box/ErrorOp/Emitted (mycelium-core-myc, mycelium-value-myc, mycelium-runtime-myc, mycelium-transpile-myc). These are Rust-only kernel/compiler-internal types (confirmed: ErrorOp is literally mycelium_numerics::ErrorOp imported by mycelium-interp's own prims.rs; Box is std::Box[Node] inside mycelium-runtime's own Step enum) -- the -myc files that reference them are transpiled ports of the COMPILER'S OWN crates (self-hosting/bootstrap), not of any of the 26 pure std crates. mycelium-std-io-myc and mycelium-std-core-myc already check CLEAN (0 findings) -- the cluster is not in the std family at all. Closing these 9 is a distinct, larger bootstrap-transpile effort; do not claim this package closes them.
+- Does not touch mycelium-transpile. The 2 (of 11) unknown-type findings that ARE in-family and closable -- both GuaranteeStrength, in mycelium-core-myc/bound.myc and mycelium-value-myc/lib.myc -- are closable because the type IS declared via co-include duplication in OTHER files of the same repo (e.g. cert_mode.myc, meta.myc, lower.myc, lib.myc), just missing in these two. The real fix is transpile switching its emission strategy from ad hoc 'co-include duplication' (explicitly documented in the generated files as 'not a language use identity') to real intra-phylum use -- a mechanism this package proves already works (DN-113), but the emission-side fix lives in mycelium-transpile, outside this lane set. Filed as an unblocked follow-up, not delivered here.
+- Does not add AOT/native-codegen lowering for the new prim: Op kind (mycelium-codegen has no [[bin]] and AOT is library-only per measured fact #7) -- interpreter-only for this package. Native parity for prim: ops is PKG-AOT's job.
+- Does not port all ~26 pure std crates. Ships std-io and std-net as the proof-of-mechanism (one pure/no-effect family, one effectful/checked family). The other ~24 crates reuse the SAME frozen surface in later, narrower packages -- this package's deliverable is the mechanism, not exhaustive coverage.
+- Does not change wild's runtime behavior, its empty-by-default posture, or any existing wild:*/host-registry test in mycelium-interp, mycelium-std-sys-host, or mycelium-std-net -- strictly additive, zero-diff on those suites.
+
+## Surfaces (frozen by L-ZIP before any implementer starts)
+
+- [`S-PRIMSIG-SCHEMA`](../surfaces/S-PRIMSIG-SCHEMA.md) — mycelium-runtime (crate mycelium-interp)
+- [`S-TYPED-PRIM-REGISTRY`](../surfaces/S-TYPED-PRIM-REGISTRY.md) — mycelium-runtime (crate mycelium-interp)
+- [`S-TYPED-PRIM-ENV`](../surfaces/S-TYPED-PRIM-ENV.md) — mycelium-l1
+- [`S-TYPED-PRIM-CALL-CHECK`](../surfaces/S-TYPED-PRIM-CALL-CHECK.md) — mycelium-l1
+- [`S-CLI-TYPED-PRIM-WIRING`](../surfaces/S-CLI-TYPED-PRIM-WIRING.md) — mycelium-cli
+- [`S-STD-IO-TYPED-PRIMS`](../surfaces/S-STD-IO-TYPED-PRIMS.md) — mycelium-std-io
+- [`S-STD-NET-SAFE-HTTP`](../surfaces/S-STD-NET-SAFE-HTTP.md) — mycelium-std-net
+
+## Lanes
+
+| Lane | Repo | Role | Done when |
+|---|---|---|---|
+| `L-ZIP` | tzervas/mycelium-lang | zipper | All surface files merged; no implementer lane starts before this. |
+| `L-MYCELIUM-RUNTIME` | tzervas/mycelium-runtime | implementer | cargo test -p mycelium-interp typed:: passes all 3 new tests; cargo test -p mycelium-interp (full suite) shows 0 diff in pre-existing host.rs/wild.rs pass/fail  |
+| `L-MYCELIUM-L1` | tzervas/mycelium-l1 | implementer | New tests/typed_prim_import.rs passes all 3 cases; full cargo test -p mycelium-l1 (including existing tests/cross_phylum.rs and tests/prim_table.rs) shows 0 dif |
+| `L-MYCELIUM-STD-IO` | tzervas/mycelium-std-io | implementer | cargo test -p mycelium-std-io --features typed-prims passes the new contract test with output equality asserted, not just Ok(_). |
+| `L-MYCELIUM-STD-NET` | tzervas/mycelium-std-net | implementer | cargo test -p mycelium-std-net --features typed-prims (no host-registry) compiles and passes with typed_prim_sigs() returning a non-empty http_request/http_get  |
+| `L-MYCELIUM-CLI` | tzervas/mycelium-cli | implementer | myc check examples/typed_to_json.myc (built --features typed-std-io) exits 0; myc run examples/typed_to_json.myc exits 0 with stdout byte-identical to the direc |
+
+## Success criteria
+
+- [ ] examples/typed_to_json.myc (use std_io::serialize.to_json; call with no wild/@std-sys/!{ffi}) passes myc check and myc run, stdout byte-identical to calling mycelium-std-io's to_json directly in Rust.
+- [ ] A typed-prim call site with a wrong argument type (e.g. Binary{8} where the registered PrimSig requires Bytes) is a CheckError at myc check time -- never silently accepted then misbehaving at myc run. This is verified by an explicit failing-case test in mycelium-l1/tests/typed_prim_import.rs, not just the passing case.
+- [ ] An effectful typed prim (http via S-STD-NET-SAFE-HTTP) requires its own declared effect (!{net}); a caller missing !{net} is refused by effect coverage; a caller declaring !{ffi} instead of !{net} is ALSO refused (proves the effect name is taken from the registered PrimSig, not hardcoded).
+- [ ] wild's existing behavior is unchanged: cargo test across mycelium-interp (host.rs, wild.rs), mycelium-std-sys-host, mycelium-std-net (existing wild:http_request/process_* tests) shows 0 diff in pass/fail count before vs after this package's PRs.
+- [ ] check_phylum_with_deps_and_prims(phylum, deps, &TypedPrimEnv::default()) is byte-identical in output to today's check_phylum_with_deps(phylum, deps) across mycelium-l1's full existing test suite (regression run, not an assertion).
+- [ ] The 2 GuaranteeStrength findings (of the 11-item/44% unknown-type cluster) are demonstrated closable by a hand-written repro using mycelium-l1's EXISTING intra-phylum use (bound.myc + a sibling nodule declaring GuaranteeStrength, resolved via use rather than duplicate-inlining) -- filed as a mycelium-transpile issue with this repro attached, NOT claimed as closed by this package's own PRs (transpile emission is out of this lane set).
+- [ ] The remaining 9 unknown-type findings (Value x4, Repr x1, Box x2, ErrorOp x1, Emitted x1) are explicitly documented as out-of-scope self-hosting/bootstrap-transpile targets in this package's PR descriptions and the hub issue -- not silently dropped, not falsely claimed closed.
+- [ ] mycelium-std-io's io.myc FLAG-io-2 residual stubs ('Value codec not ported to .myc') have a verified, working non-wild, non-Value-naming replacement call path (S-STD-IO-TYPED-PRIMS' contract test) -- even though re-transpiling io.myc itself remains a mycelium-transpile follow-up.
+
+## Adversarial review checklist
+
+- [ ] Is TypedPrimEnv::default()/empty-prims behavior in mycelium-l1 REGRESSION-TESTED byte-identical to current check_phylum/check_phylum_with_deps, not just asserted in a doc comment?
+- [ ] Does any typed-prim call get routed through Expr::Wild or trigger the hardcoded ("ffi", EffectSource::Wild) insertion at checkty.rs ~4694? Must not -- grep the diff for Expr::Wild usage in the new call-check path.
+- [ ] Is wild's own registry/tests/behavior (host.rs, wild.rs, install_default_host_ops, install_http_host_ops) touched at all in any of the 5 PRs? Must be zero-diff.
+- [ ] Does the checker verify the FULL arg list (arity + every arg's Ty) and the result Ty of every typed-prim call site, or does it accept a partial match? Must fail closed on any mismatch (this is the entire point of the package -- verify with the wrong-arity and wrong-Ty test cases, not just the happy path).
+- [ ] Do Value, Repr, Box, ErrorOp, or Emitted appear as .myc-nameable types ANYWHERE in the new surface (PrimSig params/ret, TySpec, or any fixture .myc file)? Must not -- that would be the self-hosting-scope leak this package explicitly avoids.
+- [ ] Are TypedPrimEnv (check-time) and TypedPrimRegistry (run-time) populated from anything OTHER than the single install_typed_std call site in mycelium-cli? Any second population path is a version-skew regression shaped like measured defect #3.
+- [ ] Does the new effect name "net" get accepted by the existing !{...} effect-annotation PARSER without a grammar change (effects are stored as free-form Vec<String> per FnSig -- verified in ast.rs ~494-507)? Confirm no parser edit was needed, or flag it if one was.
+- [ ] Does mycelium-std-net's typed-prims feature split ACTUALLY avoid pulling ureq/rustls into a static myc-check build (cargo tree evidence), or is the feature split only nominal (i.e. typed-prims still pulls in host-registry transitively)?
+- [ ] Cross-repo git-dep pins updated + rev-pinned in every Cargo.toml touched (mycelium-l1's mycelium-interp pin, mycelium-cli's 5 pins, mycelium-std-io's/mycelium-std-net's new mycelium-interp pin) -- no path deps reintroduced anywhere.
+- [ ] Ambiguous-dependency case: if a dep name is registered in BOTH Phyla and TypedPrimEnv simultaneously, is it refused as ambiguous (never a silent preference for one), and is there a test for it?
+- [ ] Scope creep: does any PR touch mycelium-transpile, mycelium-codegen, mycelium-proj's manifest format, or wild's elaboration bug (#3/#4)? Any of these is out-of-package and should be kicked back.
+- [ ] Rootless/minimal CI, ap-workflows action pins, no apt-get in non-image steps -- generic AGENT-PIPELINE checklist still applies to any new CI in these 5 repos.
+
+## Risks
+
+- TySpec's monomorphic v0 shape may not cleanly express to_json's true near-generic signature (it round-trips almost any concrete Value). Mitigation path (register one PrimSig per concrete instantiated T actually exercised by fixtures/tests, not a generic signature) is proposed but UNPROTOTYPED -- the l1 lane must resolve this during Zip, not treat it as pre-solved by this package.
+- Dependency-name collision: Phyla and TypedPrimEnv are separate maps keyed by the same dep-local-name namespace; resolution order/ambiguity handling when a name appears in both is specified here as 'refuse, never silently prefer' but is NOT yet implemented or tested anywhere -- a genuine new never-silent rule this package must add, not one that already exists.
+- std-net's typed-prims/ureq-rustls feature split is a claim to be MEASURED (cargo tree + binary size), not assumed -- if std-net's existing Cargo.toml feature graph has an undocumented transitive edge, the static myc-check size goal (fact #9's 3.49MB baseline) could regress silently.
+- The CLI's single install_typed_std call site is a design INTENT, not yet code -- if a future PR adds a second population path (e.g. a test harness that hand-builds a TypedPrimRegistry without going through install_typed_std), the version-skew protection this package is designed to guarantee silently erodes; the review checklist item above is the only guard, and it is manual, not automated.
+- This package extends checkty.rs's resolve_imports/effect-coverage machinery, which is large (checkty.rs is several thousand lines) and already carries multiple RFC/DN cross-references (M-662, DN-113, M-1060, RFC-0014 §4.5). The l1 lane carries real risk of touching more surface area than the frozen S-TYPED-PRIM-ENV/S-TYPED-PRIM-CALL-CHECK signatures state; adversarial review must check the diff stays additive (see checklist item 1).
+
+## Provenance
+
+Designed 2026-08-04 by sonnet sub-planners (workflow `wf_3b412561-c1d`) against **measured**
+behaviour, not the narrative docs — which are known stale. See `docs/CAPABILITY-MATRIX.md` and
+`probes/`. Per `AGENT-PIPELINE.md` the kickoff rule is absolute: no implementer starts without a
+merged package, a linked surface freeze, a hub issue and machine-checkable criteria.

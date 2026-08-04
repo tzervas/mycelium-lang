@@ -1,0 +1,144 @@
+{
+ "id": "PKG-INTERP-CORRECTNESS",
+ "title": "Interpreter/CLI correctness: data results, let+wild residual, --version",
+ "wp": "WP-11",
+ "priority": "P0",
+ "status": "pre-freeze",
+ "hub_issue": "https://github.com/tzervas/mycelium-lang/issues/45",
+ "title_prefix": "train/gap-closure:",
+ "goal": "Close 3 measured interpreter/CLI correctness defects plus the --version gap that blocks ap-workflows' version pin, each as a small, single-repo, test-pinned fix against MEASURED behavior (not the stale docs): (a) `myc run` refuses any program whose `main` evaluates to an algebraic data/ADT value (calls Interpreter::eval, which hard-refuses CoreValue::Data) instead of calling the already-existing Interpreter::eval_core and rendering the result; (b) mycelium-l1's elaborator silently drops a `let`'s own type ascription and re-infers in synthesis mode, which fails specifically for a `wild { ... }`-bound let (wild has no synthesizable type by design) even though the identical program checked clean under `myc check` \u2014 EX_SOFTWARE 70 at run time on a program `myc check` already called healthy; (c) the wild-boundary result type is trusted, never verified against what the host op actually returns, and today this failure mode is completely SILENT (checks clean, runs clean, wrong value flows into ordinary code) which violates this project's own G2 \"never silent\" posture even though full static/dynamic enforcement is out of reach for a single-repo package; (d) `myc --version` and `myc-check --version` both fail today (exit 64 / exit 66) which blocks ap-workflows/reusable-ci-mycelium.yml's `mycelium-version` pin-verification step from ever succeeding.",
+ "non_goals": [
+  "Adding an import/module mechanism (gap 1) \u2014 separate keystone package, not touched here",
+  "Building a native/AOT code path (gap 7) \u2014 separate package, AOT is mandatory per the DECIDED list but out of scope for this interpreter/CLI package",
+  "Adding method/postfix dot syntax (gap 6) or multi-statement `;`-sequencing (gap 5) \u2014 separate ergonomics package; this package only adds a regression test that a nested let-chain containing `wild` at multiple depths still elaborates, it does not touch grammar",
+  "Fixing the 45/95 placeholder-CI repos or mycelium-bench's no-op benchmarks (gap 9) \u2014 only the two specific --version calls this package needs are in scope",
+  "Implementing REAL static or dynamic verification of wild-boundary result types against a registered host-op signature catalog. That requires a machine-checkable signature surface (today docs/planning/orchestration/surfaces/S-HOST-REGISTRY.md's 'Name catalog' is a PROSE markdown table, not code) that is PKG-LINKAGE's to freeze. This package only closes the SILENT half of the gap (a loud, unmissable disclosure) and hands PKG-LINKAGE a concrete, tested insertion point for the real check later.",
+  "Human-readable constructor-name rendering for CoreValue::Data results. mycelium-core's own data.rs states plainly that a resolved DataDecl/CtorDecl carries NO name ('Names are stored separately (they are not identity \u2014 ADR-003)'), and mycelium-l1's own reveal.rs::render_surface already documents that no surface spelling survives elaboration to invert a Construct's ctor back to a name. This package ships the honest, always-correct, content-addressed `#<hash>#<i>(field, ...)` rendering (CtorRef's own Display) and explicitly flags human-name resolution as a distinct, larger follow-up (it would require threading a name index built from the pre-monomorphization Env through elaborate()'s internal monomorphize() call, which is not exposed today \u2014 see risks).",
+  "Unifying myc's and myc-check's version *numbering scheme* across their two separate repos. Each binary reports its own `env!(\"CARGO_PKG_VERSION\")` (`[workspace.package].version` in that repo's own Cargo.toml). At measurement time (2026-08-03) both happened to read \"0.464.0\", apparently kept in sync by existing fleet 'advance sibling pins to train version' automation observed in both repos' git logs \u2014 this package verifies that convention is sufficient for ap-workflows' substring-match consumer, it does not build new cross-repo version-sync machinery.",
+  "Touching mycelium-runtime. Investigation (crates/mycelium-interp/src/lib.rs:695-724) confirms `Interpreter::eval_core` and `CoreValue` already exist, are already public, and need zero changes for gaps (a)-(c) as scoped. No mycelium-runtime lane is included."
+ ],
+ "surfaces": [
+  "S-RUN-COREVALUE",
+  "S-LET-REINFER",
+  "S-WILD-DISCLOSURE-DOC",
+  "S-WILD-DISCLOSURE-CLI",
+  "S-CLI-VERSION-MYC",
+  "S-CLI-VERSION-MYCCHECK"
+ ],
+ "lanes": [
+  {
+   "id": "L-ZIP",
+   "repo": "tzervas/mycelium-lang",
+   "role": "zipper",
+   "branch_hint": "train/interp-correctness-zip",
+   "depends_on_lanes": [],
+   "deliverables": [
+    "Freeze S-RUN-COREVALUE in docs/planning/orchestration/surfaces/S-RUN-COREVALUE.md (signature + rationale only)",
+    "Freeze S-LET-REINFER in docs/planning/orchestration/surfaces/S-LET-REINFER.md (signature + rationale only)",
+    "Freeze S-WILD-DISCLOSURE-DOC in docs/planning/orchestration/surfaces/S-WILD-DISCLOSURE-DOC.md (signature + rationale only)",
+    "Freeze S-WILD-DISCLOSURE-CLI in docs/planning/orchestration/surfaces/S-WILD-DISCLOSURE-CLI.md (signature + rationale only)",
+    "Freeze S-CLI-VERSION-MYC in docs/planning/orchestration/surfaces/S-CLI-VERSION-MYC.md (signature + rationale only)",
+    "Freeze S-CLI-VERSION-MYCCHECK in docs/planning/orchestration/surfaces/S-CLI-VERSION-MYCCHECK.md (signature + rationale only)",
+    "Contract tests may be #[ignore] until implementers land"
+   ],
+   "depends_on_surface": "",
+   "checkable_done": "All surface files merged; no implementer lane starts before this."
+  },
+  {
+   "id": "L-TZERVAS-MYCELIUM-L1",
+   "repo": "tzervas/mycelium-l1",
+   "role": "implementer",
+   "branch_hint": "train/interp-correctness-tzervas-mycelium-l1",
+   "depends_on_lanes": [
+    "L-ZIP"
+   ],
+   "deliverables": [
+    "1) Add `infer_type_against(env, scope, e, expected: &Ty) -> Result<Ty, CheckError>` next to the existing `infer_type` in checkty.rs (~line 10387) \u2014 same Cx construction, but call `cx.check(scope, e, Some(expected))` instead of `cx.infer`. 2) Fix elab.rs's `Expr::Let` arm (~line 1799-1825): stop discarding the surface `ty`; when `Some(t)`, resolve it (same `resolve_ty` call pattern `check_ascribe` already uses, checkty.rs:6897) and call the new `infer_type_against`; when `None`, keep calling plain `infer_type` unchanged (byte-identical fallback). 3) Harden `check_wild`'s (checkty.rs:6535-6557) doc/error text per S-WILD-DISCLOSURE-DOC. 4) Add regression tests pinning: `let discard: Binary{64} = wild { time_mono_nanos() } in discard` elaborates successfully; the same shape with a non-Binary{64}/non-Unit result type (per the measured 'reproduces with non-Unit result types' note) also elaborates; a nested let-chain (depth >=3) with `wild` blocks at more than one depth, each independently ascribed, still elaborates; the existing `(wild {...}) : T` ascription workaround still elaborates identically to before (no accidental behavior change on that path)."
+   ],
+   "depends_on_surface": "S-LET-REINFER, S-WILD-DISCLOSURE-DOC",
+   "checkable_done": "`myc check` then `myc run` (against a locally re-pinned mycelium-cli, or a standalone `elaborate()` unit/integration test in mycelium-l1 itself) on `nodule proj @std-sys; fn main() => Binary{64} !{ffi} = let discard: Binary{64} = wild { time_mono_nanos() } in discard;` succeeds (elaborate() returns Ok, no ElabError::Residual) \u2014 today this fails with `ElabError::Residual{ what: \"could not re-infer `let discard`'s type: ...\" }`. All new tests listed in `work` are present and green in mycelium-l1's own test suite (no dependency on mycelium-cli being re-pinned for this lane's own gate)."
+  },
+  {
+   "id": "L-TZERVAS-MYCELIUM-CLI",
+   "repo": "tzervas/mycelium-cli",
+   "role": "implementer",
+   "branch_hint": "train/interp-correctness-tzervas-mycelium-cli",
+   "depends_on_lanes": [
+    "L-ZIP"
+   ],
+   "deliverables": [
+    "1) Switch both `run_single_nodule` and `run_multi_nodule` (src/lib.rs) from `interp.eval(&node)` to `interp.eval_core(&node)`; implement `render_core_value`/`render_datum` per S-RUN-COREVALUE, keeping the Repr arm's rendering byte-identical to today (only the new Data arm is new code). 2) Implement `contains_wild(&Node)` and `wild_boundary_banner()` per S-WILD-DISCLOSURE-CLI; call it (stderr, unconditional) right after a successful `elaborate()` and before `eval_core()`, at both call sites. 3) Add `--version`/`-V` handling to src/bin/myc.rs per S-CLI-VERSION-MYC, before manifest/project resolution. 4) Re-pin this repo's `mycelium-l1` git `rev =` dependency (Cargo.toml) to the merged mycelium-l1 lane's commit once that lane lands \u2014 gap (b)'s fix does not take effect in `myc run` until this pin advances (no path deps across these repos \u2014 see risks). 5) Add/extend tests in mycelium-cli's own tests/ (mirroring the existing host_registry.rs/stream.rs/unbounded.rs pattern) covering: a Unit-returning main runs successfully end-to-end; the wild-boundary banner appears on stderr for a wild-containing program and is ABSENT for a plain non-wild program; `myc --version` output."
+   ],
+   "depends_on_surface": "S-RUN-COREVALUE, S-WILD-DISCLOSURE-CLI, S-CLI-VERSION-MYC",
+   "checkable_done": "`myc run` on `fn main() => Unit = Unit;` exits 0 and prints a rendered CoreValue (today: rc=65, `error[myc-run-eval]: the program evaluated to a data value; use eval_core for the data fragment`). `myc run` on the gap-(b) reproduction (after the mycelium-l1 re-pin) exits 0 (today: rc=70). `myc run` on `fn main() => Unit !{ffi} = (wild { time_mono_nanos() }) : Unit;` still exits 0 (this program is legitimately well-typed under today's semantics \u2014 the fix is disclosure, not refusal) but its stderr now contains the wild_boundary_banner text; `myc run` on a plain `fn main() => Unit = Unit;` has NO such banner in stderr. `out=$(myc --version 2>&1); rc=$?` gives rc=0 and `out` equals `mycelium-cli <version>` where `<version>` is `[workspace.package].version` from this repo's Cargo.toml (measured today: `0.464.0`)."
+  },
+  {
+   "id": "L-TZERVAS-MYCELIUM-CHE",
+   "repo": "tzervas/mycelium-check",
+   "role": "implementer",
+   "branch_hint": "train/interp-correctness-tzervas-mycelium-check",
+   "depends_on_lanes": [
+    "L-ZIP"
+   ],
+   "deliverables": [
+    "Add `--version`/`-V` handling to src/bin/myc-check.rs's argument loop per S-CLI-VERSION-MYCCHECK, printing to STDOUT (not stderr \u2014 the ap-workflows consumer only captures stdout) before the existing `_ if path.is_none() => path = Some(a)` catch-all can claim it as a file path. Add a test exercising this exact CLI entry point (mirrors the oracle-mode tests already present)."
+   ],
+   "depends_on_surface": "S-CLI-VERSION-MYCCHECK",
+   "checkable_done": "`out=$(myc-check --version 2>&1); rc=$?` gives rc=0 and `out` contains the exact `[workspace.package].version` string from this repo's Cargo.toml (measured today: `0.464.0`) as a literal substring (today: rc=66, `io-error: --version: No such file or directory (os error 2)`). Independently: running the exact shell logic at ap-workflows' .github/workflows/reusable-ci-mycelium.yml lines 134-155 against the fixed `myc-check` binary with `inputs.mycelium-version` set to that version string no longer hits the `mycelium-version='$WANT' was requested but myc-check does not report a version` refusal at line 147."
+  }
+ ],
+ "blocked_by": [],
+ "unblocks": [
+  "PKG-LINKAGE \u2014 this package's disclosure banner and its `contains_wild(&Node)` walk over the small, closed L0 Node grammar is a ready-made insertion point for PKG-LINKAGE's future real enforcement (checking a registered host-op signature catalog against the declared wild-boundary result type) once that catalog exists as machine-checkable data rather than the prose table in docs/planning/orchestration/surfaces/S-HOST-REGISTRY.md.",
+  "ap-workflows adoption (gap 11) \u2014 landing S-CLI-VERSION-MYCCHECK removes the specific, measured blocker in reusable-ci-mycelium.yml's version-pin step (lines 134-155) that currently makes that workflow refuse ANY `mycelium-version` pin. This alone does not complete adoption (0 of 50 real-CI repos currently compose off ap-workflows per gap 11 \u2014 that is a separate, larger migration effort), it only removes one concrete, previously-unverifiable input."
+ ],
+ "success_criteria": [
+  "`myc run` on `nodule proj; fn main() => Unit = Unit;` exits 0 (measured baseline today: rc=65, `error[myc-run-eval]: the program evaluated to a data value; use eval_core for the data fragment`).",
+  "`myc check` then `myc run` on `nodule proj @std-sys; fn main() => Binary{64} !{ffi} = let discard: Binary{64} = wild { time_mono_nanos() } in discard;` both exit 0 (measured baseline today: check rc=0, run rc=70 `error[myc-run-residual]: ... could not re-infer `let discard`'s type: ... a `wild` block has no synthesizable type ...`).",
+  "The same program shape with the let's declared type varied to at least one other repr (e.g. `Binary{8}`, or a `Seq`) also elaborates and runs successfully end-to-end \u2014 pins that the fix is not width- or repr-specific.",
+  "The documented workaround `let discard = (wild { time_mono_nanos() }) : Binary{64} in discard` still checks and runs successfully, unchanged (regression guard on check_ascribe's independent path).",
+  "`myc run` on `nodule proj @std-sys; fn main() => Unit !{ffi} = (wild { time_mono_nanos() }) : Unit;` still exits 0 (this remains a legitimately well-typed v0 program) AND its stderr now contains the wild-boundary disclosure banner text; the same command against a wild-free program (e.g. `fn main() => Unit = Unit;`) produces NO such banner line in stderr (measured baseline today: silent in both cases \u2014 zero disclosure either way).",
+  "`out=$(myc --version 2>&1); rc=$?` gives rc=0 and `out` equals `mycelium-cli <version>` matching `[workspace.package].version` in mycelium-cli's Cargo.toml (measured baseline today: rc=64, full usage block printed instead).",
+  "`out=$(myc-check --version 2>&1); rc=$?` gives rc=0 and `out` contains, as a literal substring, `[workspace.package].version` from mycelium-check's Cargo.toml (measured baseline today: rc=66, `io-error: --version: No such file or directory (os error 2)`); the exact shell logic in ap-workflows/.github/workflows/reusable-ci-mycelium.yml lines 134-155 passes its version-pin check against the fixed binary.",
+  "Interpreter::eval() in mycelium-runtime is unmodified and its existing unit test (crates/mycelium-interp/src/lib.rs:1123, `assert_eq!(err, EvalError::DataResult)`) still passes unchanged \u2014 confirms gap (a)'s fix is CLI-side only, not a library-contract change.",
+  "Every pre-existing green test in all three touched repos' own CI (mycelium-l1's differential/elaboration suite, mycelium-cli's tests/ directory, mycelium-check's oracle/project-mode tests) stays green after these changes \u2014 no regression."
+ ],
+ "adversarial_checklist": [
+  "Confirm `Interpreter::eval()` in mycelium-runtime is untouched and still refuses CoreValue::Data with EvalError::DataResult unchanged \u2014 the fix must be scoped to the CLI's own call site (eval -> eval_core), never a change to eval()'s documented library contract.",
+  "Confirm the `Expr::Let` fix only takes the new ascription-aware path when the surface `ty` is `Some(_)`; confirm the `None` fallback still calls the original, unmodified `infer_type` byte-for-byte \u2014 a reviewer should diff-test that every currently-passing unannotated-`let` program in the existing test corpus is unaffected.",
+  "Confirm the new `infer_type_against`'s `Cx` construction mirrors `infer_type`'s field-for-field (`std_sys: true`, `ambient_policy: None`, `affine: Tracker::inert()`, `strictness: Strict`, etc. \u2014 checkty.rs ~10387-10446) \u2014 any divergence risks silently changing re-inference semantics for constructs other than `wild` that this package's tests don't happen to cover.",
+  "Confirm the documented ascription workaround `(wild {...}) : T` still checks and elaborates identically post-fix (regression guard \u2014 check_ascribe's independent `resolve_ty`+`expected` derivation, checkty.rs:6891-6898, must remain untouched).",
+  "Confirm `contains_wild(&Node)` is a truly EXHAUSTIVE match over every Node variant (Const/Var/Let/Op/Swap/Construct/Match/Lam/App/Fix/FixGroup) with no `_ => false` catch-all that could silently miss a `wild:` op nested inside, e.g., a Match alternative or a FixGroup member \u2014 construct a test program where the only `wild` call is inside a `helper()` function called transitively from `main` (not textually inside `main`'s own top-level body) and confirm the banner still fires.",
+  "Confirm the wild-boundary banner does NOT fire for a program with zero `wild` blocks (no stderr noise regression for the common case) beyond the pre-existing, unconditional `cert_mode_line`.",
+  "Confirm the wild-boundary banner's wording does not overclaim \u2014 it must say what is NOT verified, never imply verification now happens (G2/VR-5 \u2014 a reassuring-sounding but false message would itself be a silent-wrong-type risk in disguise).",
+  "Confirm `render_datum`'s recursive walk over nested `Datum`/`CoreValue` cannot host-stack-overflow on a deeply-nested constructed value \u2014 mycelium-core's own datum.rs docstring flags that Clone/PartialEq/Drop on Datum/CoreValue are deliberately manual-iterative for exactly this reason (RFC-0041 \u00a74.5/W3); a naive recursive `Display`-style renderer would reintroduce the same class of bug the kernel code was hardened against. Test at meaningful nesting depth (100+), expect graceful output or an explicit bounded refusal, never a crash.",
+  "Confirm `--version` handling in both `myc.rs` and `myc-check.rs` runs BEFORE any manifest/project-directory resolution, so it works from an arbitrary cwd with no `mycelium-proj.toml` present.",
+  "Confirm `--version` output is a single line to STDOUT only (not also/instead stderr) \u2014 ap-workflows' consumer captures stdout via `$(myc-check --version 2>/dev/null || true)` and does a plain substring match; a stderr-only or multi-line emission would silently break that check without any visible failure in this package's own tests unless the reviewer specifically re-runs the ap-workflows shell logic against the built binary.",
+  "Confirm the mycelium-cli lane's `mycelium-l1` git-rev pin (Cargo.toml `rev = \"...\"`) is actually advanced to the merged mycelium-l1 lane commit before mycelium-cli's own gap-(b) checkable_done is claimed satisfied \u2014 these are two separate repos with no path deps, so landing the mycelium-l1 fix alone does not change `myc run`'s behavior until the pin moves.",
+  "Confirm no lane silently reached into mycelium-runtime \u2014 this package's design explicitly found zero required changes there; any diff touching mycelium-runtime should be treated as scope creep and questioned."
+ ],
+ "requires_repin": false,
+ "fleet": {
+  "runner_labels": [
+   "self-hosted",
+   "linux",
+   "x64",
+   "podman"
+  ]
+ },
+ "kickoff_prompt": "You are an implementer on PKG-INTERP-CORRECTNESS lane <LANE_ID>, hub https://github.com/tzervas/mycelium-lang/issues/45. Touch ONE repo only. Work against the FROZEN surfaces in docs/planning/orchestration/surfaces/ \u2014 if a surface needs changing, stop and say so; do not rename or widen a frozen signature. The repo's prose docs are STALE: trust docs/CAPABILITY-MATRIX.md and probes/ over any narrative claim. Open one green-CI PR in your lane's repo; never edit a foreign repo in the same PR. Your lane is done only when its checkable_done holds. Prefer 'unknown / needs human' over false closure.",
+ "provenance": {
+  "designed": "2026-08-04",
+  "method": "sonnet sub-planner workflow wf_3b412561-c1d, designed against MEASURED behaviour",
+  "effort_estimate": "M",
+  "risks": [
+   "The Expr::Let fix touches a dense, heavily-cross-referenced 11k+-line checker/elaborator pair (checkty.rs/elab.rs, full of DN-xxx/RFC-xxxx/M-xxx tagged invariants) \u2014 a shallow patch risks missing a subtlety the surrounding comments encode. Mitigate by copying `infer_type`'s Cx construction verbatim rather than hand-rewriting it.",
+   "No existing `contains_wild`-style AST/Node walker was found anywhere in the codebase during research \u2014 the implementer must write this from scratch against Node's 11-variant grammar and get it genuinely exhaustive; an incomplete walk would make the new disclosure banner itself silently incomplete, which is precisely the failure mode this package exists to eliminate.",
+   "The task framing raises 'check registered signatures (ties to PKG-LINKAGE)' as an option for gap (c); investigation shows that catalog is currently a prose markdown table (S-HOST-REGISTRY.md's 'Name catalog'), not machine-checkable data \u2014 if a reviewer expects this package to deliver real enforcement rather than disclosure, that expectation must be corrected before kickoff, not discovered mid-review.",
+   "`myc --version`/`myc-check --version` values come from each repo's own `[workspace.package].version` (both read 0.464.0 at measurement time, 2026-08-03/04), apparently held in sync by existing fleet 'advance sibling pins to train version' automation observed in both repos' git logs (e.g. mycelium-cli PR #19). This package does not create or enforce that sync \u2014 if the fleet automation lapses, the two --version outputs could silently diverge again with no guard from this package.",
+   "mycelium-cli pins mycelium-l1 via a git `rev =` (no path dep, no shared workspace) \u2014 the mycelium-l1 lane's fix has zero observable effect on `myc run` until mycelium-cli's Cargo.toml pin is advanced to the new commit and re-verified. This is a hard internal lane-ordering dependency even though the package-level `blocked_by` is empty (nothing outside this package blocks it).",
+   "Rendering CoreValue::Data with real, human-readable constructor names (as opposed to this package's honest content-addressed `#<hash>#<i>(...)` fallback) would need a name index built from the pre-monomorphization `Env` (which DOES carry names, via `Env.types: BTreeMap<String, DataInfo>`) reconciled against the registry `elaborate()` builds internally from its OWN `monomorphize()`-transformed env (mono.rs) \u2014 these are not the same `Env`, and getting this wrong would silently mislabel a value, which is strictly worse than today's honest hash-based rendering. Deliberately left as a flagged follow-up, not attempted here.",
+   "Given this project's own culture explicitly distinguishes measured from aspirational (the reason the docs rotted in the first place), success criteria intentionally point at exact reproduction commands measured live against the built `myc`/`myc-check` binaries during this planning pass rather than at the (possibly stale) doc comments in the source \u2014 an implementer should re-measure against their own checkout before trusting the exact line numbers cited above, since they will drift as soon as any of these lanes lands."
+  ]
+ }
+}
