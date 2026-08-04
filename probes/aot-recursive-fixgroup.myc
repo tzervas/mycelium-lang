@@ -1,0 +1,31 @@
+// @probe: aot-recursive-fixgroup
+// @capability: mutual sibling recursion between two top-level fns (the FixGroup shape B1/B2 target)
+// @expect-check: 0
+// @expect-run: 0
+// @expect-build: 64
+// @claim: PKG-WP9-AOT goal: mycelium-codegen's B1 (Match in tail-Fix pre-tail) and B2 (FixGroup in
+// @claim: Fix arm bindings) gates, plus their differential test, merged in mycelium-codegen PR #19
+// @claim: — this probe is the myc-CLI-layer canary for that same recursive shape.
+// @note: Measured 2026-08-04: `is_even`/`is_odd` calling each other (never invoked from `main`, so
+// @note: this checks and runs cleanly without looping) elaborates to a FixGroup at the mycelium-l1
+// @note: layer. `myc build --native --out <tmp>` still exits 64 today because `--native` itself does
+// @note: not exist at the CLI layer yet (same as every other probe in this file).
+// @note: BLOCKED ON #19: per PKG-WP9-AOT's own goal text, the recursion-inclusive rows (FixGroup /
+// @note: non-tail Fix via the trampoline) "CANNOT be sized until tzervas/mycelium-codegen#19 (B1/B2)
+// @note: merges — that PR is literally what changes their expected results." As instructed by the
+// @note: package, this probe's post-wiring @expect-build is deliberately left UNFILLED here rather
+// @note: than asserted speculatively; once codegen#19 merges AND `myc build --native` is wired for
+// @note: this shape, re-measure and fill in the merge commit SHA here before changing the expectation.
+// @note: Do not treat a future accidental pass on this probe as intended progress until that SHA is
+// @note: recorded — a flip with no citation is exactly the kind of unlanded-but-claimed drift this
+// @note: harness exists to catch.
+nodule probe;
+
+fn is_even(n: Binary{8}) => Binary{8} =
+  is_odd(n);
+
+fn is_odd(n: Binary{8}) => Binary{8} =
+  is_even(n);
+
+fn main() => Binary{8} =
+  0b0000_0001;

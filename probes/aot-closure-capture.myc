@@ -1,0 +1,39 @@
+// @probe: aot-closure-capture
+// @capability: general higher-order call (a function-typed value applied through App, not a
+// @capability: statically-known self/sibling callee) — outside the narrow self/sibling-call
+// @capability: trampoline shape mycelium-codegen's native backend supports
+// @expect-check: 0
+// @expect-run: 0
+// @expect-build: 64
+// @claim: PKG-WP9-AOT non_goals: "General closures / arbitrary Lam+App outside the narrow
+// @claim: self/sibling-call trampoline shape (epic ask #2) — stays refused; not attempted here."
+// @note: Measured 2026-08-04: no anonymous-lambda-literal surface syntax was found to exist in
+// @note: Mycelium — `let f = fn(x: T) => T = ...` and `\x: T => ...` both fail to parse
+// @note: (`error[myc-parse]: expected an expression, found Fn` / `unexpected character '\'`), and
+// @note: there is no auto-currying/partial-application (`add(x)` with `add` arity 2 fails check with
+// @note: "takes 2 argument(s), got 1"). The only Lam/App-flavoured shape this probe could confirm as
+// @note: surface-expressible is passing an existing top-level `fn` BY VALUE into a function-typed
+// @note: parameter (`f: Binary{8} => Binary{8}`) and calling it indirectly (`f(x)`) — a genuine
+// @note: indirect App through a value, not a direct self/sibling call, so it still exercises the
+// @note: "outside the trampoline shape" refusal category — but it is NOT a true capturing closure.
+// @note: If a real capturing-lambda literal syntax exists and this probe simply failed to find it,
+// @note: that is itself unverified — flagging as unknown/needs-human rather than asserting either
+// @note: way. `myc check`/`myc run` both succeed (0/0): this is a legitimate, narrow higher-order
+// @note: program in the interpreter today.
+// @note: `myc build --native --out <tmp>` exits 64 today because `--native` does not exist at the
+// @note: CLI layer yet. UNLIKE the other AOT probes in this file, this one's @expect-build is NOT a
+// @note: flip point: per the package's own non-goal above, general Lam+App outside the
+// @note: self/sibling-call trampoline stays refused BY DESIGN even after `--native` is wired — the
+// @note: expected post-wiring exit is 70 (error[myc-build-native-unsupported]) naming the refused
+// @note: construct, never 0 and never a silent spore-only success. Do not weaken this expectation to
+// @note: 0 when the CLI lane lands; if it ever measures 0 here, that is a scope-creep bug, not a fix.
+nodule probe;
+
+fn apply(f: Binary{8} => Binary{8}, x: Binary{8}) => Binary{8} =
+  f(x);
+
+fn inc(x: Binary{8}) => Binary{8} =
+  x;
+
+fn main() => Binary{8} =
+  apply(inc, 0b0000_0001);
