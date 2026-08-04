@@ -4,10 +4,10 @@
 
 | Field | Value |
 |-------|-------|
-| **Measured** | 2026-08-04T13:32:59Z |
-| **Binary** | `/root/.claude/jobs/7153dd73/tmp/mycbuild/mycelium-cli/target/release/myc` (sha256 `ef33e9381ef452da…`) |
-| **Cargo features** | `default = ["host-registry"] (std-net compiled in regardless — see EXPRESSIBILITY-GAPS §0.5)` |
-| **Probes** | 20 (20 as-expected, 0 drift, 0 skipped) |
+| **Measured** | 2026-08-04T16:14:21Z |
+| **Binary** | `/opt/actions-runner/_work/_temp/cli/target/release/myc` (sha256 `1ef918ad06e7b5fd…`) |
+| **Cargo features** | `default (cargo build --release)` |
+| **Probes** | 20 (18 as-expected, 0 drift, 2 skipped) |
 
 Every row below was produced by running a program in `probes/`. Nothing here is asserted.
 `expect` is what the probe declares; `got` is what this run observed. **DRIFT** means the two
@@ -29,7 +29,7 @@ as-expected/DRIFT accounting as `check`/`run`.
 | `aot-recursive-fixgroup` | mutual sibling recursion between two top-level fns (the FixGroup shape B1/B2 target) | 0 / 0 | 0 / 0 | 64 / 64 | as-expected | — |
 | `aot-scalar-in-subset` | pure Binary{8} scalar bit ops (XOR) — the exact V0 ABI slice PKG-WP9-AOT scopes for | 0 / 0 | 0 / 0 | 64 / 64 | as-expected | — |
 | `aot-wild-effect` | `myc build --native` on a program with a `wild {}` host-effect call — host-effect | 0 / 0 | 0 / 0 | 64 / 64 | as-expected | — |
-| `http-request-default-build` | networking (wild:http_request) reaching a live HTTPS host | 0 / 0 | 0 / 0 | — | as-expected | — |
+| `http-request-default-build` | networking (wild:http_request) reaching a live HTTPS host | 0 / 0 | — / — | — | skipped (requires `network`) | not measured in this environment |
 | `let-chain-effectful` | nested `let … in` sequencing of multiple effectful host calls | 0 / 0 | 0 / 0 | — | as-expected | — |
 | `let-wild-annotated-residual` | `let` binding a `wild` block WITH a type annotation on the binding | 0 / 70 | 0 / 70 | — | as-expected | error[myc-run-residual]: `main` is outside the evaluation-complete fragment (RFC-0007 §4.6): co |
 | `let-wild-unannotated` | `let` binding a `wild` block with NO type annotation and NO ascription | 65 / 65 | 65 / 65 | — | as-expected | error[myc-check]: check error in `main`: a `wild` block has no synthesizable type — its body i |
@@ -43,7 +43,7 @@ as-expected/DRIFT accounting as `check`/`run`.
 | `wild-effect-undeclared` | an undeclared `ffi` effect is refused (RFC-0014 s4.5 I3, no undeclared effects) | 65 / 65 | 65 / 65 | — | as-expected | error[myc-check]: check error in `main`: `main` performs effect `ffi` (via a `wild` block (the F |
 | `wild-executes-clock` | `wild {}` dispatches a registered host op and returns a real value | 0 / 0 | 0 / 0 | — | as-expected | — |
 | `wild-executes-rand` | host entropy op returns real bytes through `wild {}` | 0 / 0 | 0 / 0 | — | as-expected | — |
-| `wild-return-type-unenforced` | whether a fn's declared result type is ENFORCED across a `wild` boundary | 0 / 0 | 0 / 0 | — | as-expected | — |
+| `wild-return-type-unenforced` | whether a fn's declared result type is ENFORCED across a `wild` boundary | 0 / 0 | — / — | — | skipped (requires `network`) | not measured in this environment |
 
 ## How to add a capability claim
 
