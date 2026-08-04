@@ -4,7 +4,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Measured** | 2026-08-04T15:01:35Z |
+| **Measured** | 2026-08-04T17:34:07Z |
 | **Binary** | `/opt/actions-runner/_work/_temp/cli/target/release/myc` (sha256 `1ef918ad06e7b5fd…`) |
 | **Cargo features** | `default (cargo build --release)` |
 | **Probes** | 20 (18 as-expected, 0 drift, 2 skipped) |
