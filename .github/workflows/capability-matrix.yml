@@ -125,6 +125,7 @@ jobs:
             exit 0
           fi
           br="chore/capability-matrix-$(git rev-parse --short HEAD)"
+          echo "BR=$br" >> "$GITHUB_ENV"
           if git ls-remote --exit-code --heads origin "$br" >/dev/null 2>&1; then
             echo "branch $br already exists — a refresh is already in flight"; exit 0
           fi
@@ -144,8 +145,29 @@ jobs:
           fi
           body=$(printf 'Automated refresh of `docs/CAPABILITY-MATRIX.md` from `probes/`.\n\nProbed with `myc` @ `%s`.\nNetwork-tagged probes are skipped on the rootless runners (no egress); they appear as *skipped*, never as drift.%s\n' \
             "${{ steps.build.outputs.rev }}" "$drift_note")
-          gh pr create --repo "${GITHUB_REPOSITORY}" --base main --head "$br" \
-            --title "chore(docs): regenerate measured capability matrix" \
-            --body "$body"
+          # POST the PR through the REST API with curl, NOT `gh`.
+          # `gh` is not on every self-hosted runner: this job has landed on a NON-containerised
+          # runner (/opt/actions-runner/_work/...) where it is absent, giving
+          # "gh: command not found" / exit 127 AFTER the branch had already been pushed — a
+          # half-completed run that left an orphaned branch and no PR.
+          # release.yml in this repo already establishes the house pattern and the reason:
+          # "no third-party actions - the job is plain curl against this repo's own REST API
+          # using the workflow-scoped GITHUB_TOKEN". Following it removes the dependency entirely.
+          # ONE line, fully indented: a multi-line heredoc here would put Python at column 0,
+          # which ends the YAML literal block — the very trap the comment above warns about, and
+          # which an earlier revision of THIS patch fell into. Body travels via the environment,
+          # never as an argument, so quoting in the body cannot break the command.
+          payload=$(PR_BODY="$body" python3 -c 'import json,os;print(json.dumps({"title":os.environ["PR_TITLE"],"head":os.environ["PR_HEAD"],"base":"main","body":os.environ["PR_BODY"]}))')
+          code=$(printf '%s' "$payload" | curl -sS -o /tmp/prcreate.out -w '%{http_code}' \
+            -X POST -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+            -H "Accept: application/vnd.github+json" --data @- \
+            "${GITHUB_API_URL}/repos/${GITHUB_REPOSITORY}/pulls")
+          case "$code" in
+            201) echo "opened: $(python3 -c 'import json;print(json.load(open("/tmp/prcreate.out"))["html_url"])')" ;;
+            422) echo "::warning title=PR already exists::a PR for ${PR_HEAD} is already open; leaving it alone" ;;
+            *)   echo "::error::PR creation failed (HTTP $code): $(head -c 300 /tmp/prcreate.out)"; exit 1 ;;
+          esac
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_TITLE: "chore(docs): regenerate measured capability matrix"
+          PR_HEAD: ${{ env.BR }}
