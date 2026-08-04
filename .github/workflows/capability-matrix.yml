@@ -63,10 +63,23 @@ jobs:
         id: build
         run: |
           set -eu
-          rev=$(awk '/mycelium-cli/{print $NF}' components.lock | grep -oE '[0-9a-f]{40}' | head -1 || true)
+          # components.lock lines are `name=<rev> tree=<treehash>`. TWO bugs lived here:
+          #   1. `$NF` is the LAST field, i.e. `tree=<treehash>` — a TREE hash, not a commit. Checking
+          #      it out fails with "fatal: Cannot switch branch to a non-commit" and exit 128, which
+          #      is what broke this workflow on its first real run.
+          #   2. the pattern /mycelium-cli/ is a SUBSTRING match, so it also matches
+          #      `mycelium-cli-common` and could silently pick the wrong component's pin.
+          # Anchor the name exactly and take the rev (the 40 hex chars right after `=`).
+          rev=$(sed -n 's/^mycelium-cli=\([0-9a-f]\{40\}\).*/\1/p' components.lock | head -1)
           if [ -n "$rev" ]; then
             echo "building mycelium-cli @ $rev (from components.lock)"
             git clone -q https://github.com/${GITHUB_REPOSITORY_OWNER}/mycelium-cli.git "$RUNNER_TEMP/cli"
+            # Verify the pin is a COMMIT before switching to it. Without this the failure surfaces as a
+            # bare `exit 128` from git, which reads like a clone problem rather than a bad pin.
+            if ! git -C "$RUNNER_TEMP/cli" cat-file -e "${rev}^{commit}" 2>/dev/null; then
+              echo "::error title=bad pin::components.lock's mycelium-cli rev '$rev' is not a commit in that repo. If it looks like a tree hash, the lock parse picked the wrong field."
+              exit 1
+            fi
             git -C "$RUNNER_TEMP/cli" checkout -q "$rev"
           else
             echo "::warning title=no pin found::components.lock has no mycelium-cli rev; building default branch tip"
