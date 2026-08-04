@@ -1,0 +1,30 @@
+// @probe: aot-scalar-in-subset
+// @capability: pure Binary{8} scalar bit ops (XOR) — the exact V0 ABI slice PKG-WP9-AOT scopes for
+// @capability: `myc build --native`: scalar Binary/Ternary, non-recursive, no wild/heap/closure
+// @expect-check: 0
+// @expect-run: 0
+// @expect-build: 64
+// @claim: PKG-WP9-AOT non_goals/goal: the non-recursive V0 slice (scalar Binary/Ternary ABI +
+// @claim: non-recursive Construct/Match + unquantized Dense) "does not depend on [codegen#19] and
+// @claim: can be measured and wired in parallel" — this probe is that slice's canary.
+// @note: Measured 2026-08-04: `myc check`/`myc run` both succeed (0/0) — this program is squarely
+// @note: inside the evaluation-complete fragment and the codegen-API layer's own capability corpus
+// @note: (S-AOT-CAPABILITY-CORPUS) is expected to accept this exact shape once exercised directly
+// @note: against mycelium-mlir. But `myc build --native --out <tmp>` still exits 64 (EX_USAGE) TODAY
+// @note: because the `--native` flag itself does not exist yet at the myc-CLI layer — the
+// @note: mycelium-codegen backend being *capable* of this program and the mycelium-cli *frontend*
+// @note: wiring `--native` through to it are two separate, independently-landing lanes of this
+// @note: same package (L-TZERVAS-MYCELIUM-COD vs L-TZERVAS-MYCELIUM-CLI).
+// @note: Incidental finding while building this probe: bitwise AND/OR (`&`, `|`) are NOT registered
+// @note: prims (`unknown function/constructor/prim band`/`bor`) though XOR (`^`) is — this probe
+// @note: deliberately sticks to XOR, the one confirmed-working bit op, rather than asserting AND/OR
+// @note: exist.
+// @note: THIS IS A FLIP POINT: once `myc build --native` is wired for the V0 scalar-ABI slice, this
+// @note: probe's @expect-build should move to 0 — that drift is the fix landing.
+nodule probe;
+
+fn scramble(x: Binary{8}) => Binary{8} =
+  x ^ 0b0101_0101;
+
+fn main() => Binary{8} =
+  scramble(0b0010_1010) ^ 0b0000_1111;

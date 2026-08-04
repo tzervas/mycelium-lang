@@ -1,0 +1,30 @@
+// @probe: aot-wild-effect
+// @capability: `myc build --native` on a program with a `wild {}` host-effect call — host-effect
+// @capability: codegen is a permanent non-goal of this whole package, never merely "not yet done"
+// @expect-check: 0
+// @expect-run: 0
+// @expect-build: 64
+// @claim: PKG-WP9-AOT non_goals: "Host-effect (`wild:`) codegen — epic ask #4 of codegen#5. Zero
+// @claim: representation of HostCallRegistry/wild dispatch exists anywhere in llvm.rs or
+// @claim: trampoline.rs (verified by grep — no 'wild'/'HostCall' token in either file). This needs
+// @claim: its own ABI design ... and is explicitly out of scope for this package; it is a distinct
+// @claim: follow-on."
+// @note: Measured 2026-08-04: `myc check` and `myc run` both succeed (0/0) — this is the identical
+// @note: program shape as the already-CLOSED `wild-executes-clock` probe in this same suite (real
+// @note: host clock dispatch through the interpreter). @expect-run is included and set to 0 here
+// @note: deliberately — leaving it unset would make this harness actually invoke `myc run` anyway
+// @note: (an absent @expect-run is NOT treated as "not run"; only the literal `skip` value is) and
+// @note: compare its real exit code against an empty expectation, which would always DRIFT.
+// @note: `myc build --native --out <tmp>` exits 64 today because `--native` does not exist yet.
+// @note: THIS IS PERMANENTLY OUT OF SCOPE, NOT A FLIP POINT LIKE THE OTHER PROBES IN THIS FILE: per
+// @note: the package's own non_goals, host-effect codegen needs a wholly separate ABI design (how a
+// @note: compiled native binary would call into the same HostCallRegistry the interpreter uses,
+// @note: likely dynamic linking against a shared host library) and is a distinct follow-on package,
+// @note: not part of PKG-WP9-AOT. The expected post-CLI-wiring exit for this exact probe is 70
+// @note: (error[myc-build-native-unsupported], naming the wild/host-effect construct) FOREVER, not 0
+// @note: — do not treat a future 0 here as progress; it would mean scope crept into a package that
+// @note: explicitly excluded it. This framing is deliberately "out of scope", never "coming soon".
+nodule probe @std-sys;
+
+fn main() => Binary{64} !{ffi} =
+  wild { time_mono_nanos() };

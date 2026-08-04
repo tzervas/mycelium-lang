@@ -1,0 +1,19 @@
+// @probe: aot-native-flag-absent
+// @capability: `myc build --native` exists as a real build mode (not just parsed and ignored)
+// @expect-check: 0
+// @expect-run: 0
+// @expect-build: 64
+// @claim: PKG-WP9-AOT goal: "`myc build --native` exits 64 (EX_USAGE — the flag does not exist; it
+// @claim: falls through with_run_options' `_ => usage()` arm)"
+// @note: Measured 2026-08-04: CONFIRMED. `myc build --native --out <path>` on this trivial program
+// @note: prints the full usage block and exits 64 — the flag is not recognised at all, not merely
+// @note: unimplemented for this program shape. Plain `myc build` (no --native) exits 0 and emits a
+// @note: spore, unchanged.
+// @note: THIS IS THE FLIP POINT: this probe's @expect-build must move to 0 the moment
+// @note: L-TZERVAS-MYCELIUM-CLI (PKG-WP9-AOT) lands `myc build --native --out <path>` end-to-end —
+// @note: that DRIFT is the fix landing, not a regression. Do not pre-emptively soften this
+// @note: expectation before the CLI lane's PR actually merges and is re-measured.
+nodule probe;
+
+fn main() => Binary{8} =
+  0b0010_1010;

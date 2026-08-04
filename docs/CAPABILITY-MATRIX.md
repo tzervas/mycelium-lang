@@ -4,10 +4,10 @@
 
 | Field | Value |
 |-------|-------|
-| **Measured** | 2026-08-04T01:55:22Z |
+| **Measured** | 2026-08-04T13:32:59Z |
 | **Binary** | `/root/.claude/jobs/7153dd73/tmp/mycbuild/mycelium-cli/target/release/myc` (sha256 `ef33e9381ef452da…`) |
 | **Cargo features** | `default = ["host-registry"] (std-net compiled in regardless — see EXPRESSIBILITY-GAPS §0.5)` |
-| **Probes** | 15 (15 as-expected, 0 drift, 0 skipped) |
+| **Probes** | 20 (20 as-expected, 0 drift, 0 skipped) |
 
 Every row below was produced by running a program in `probes/`. Nothing here is asserted.
 `expect` is what the probe declares; `got` is what this run observed. **DRIFT** means the two
@@ -16,28 +16,41 @@ disagree — either the language moved or the expectation was wrong, and both ne
 Exit codes are sysexits: `0` ok, `64` EX_USAGE (parse), `65` EX_DATAERR (check or eval
 refusal), `70` EX_SOFTWARE (elaboration residual — outside the evaluation-complete fragment).
 
-| probe | capability | expect check/run | got check/run | status | first diagnostic |
-|-------|-----------|------------------|---------------|--------|------------------|
-| `http-request-default-build` | networking (wild:http_request) reaching a live HTTPS host | 0 / 0 | 0 / 0 | as-expected | — |
-| `let-chain-effectful` | nested `let … in` sequencing of multiple effectful host calls | 0 / 0 | 0 / 0 | as-expected | — |
-| `let-wild-annotated-residual` | `let` binding a `wild` block WITH a type annotation on the binding | 0 / 70 | 0 / 70 | as-expected | error[myc-run-residual]: `main` is outside the evaluation-complete fragment (RFC-0007 §4.6): co |
-| `let-wild-unannotated` | `let` binding a `wild` block with NO type annotation and NO ascription | 65 / 65 | 65 / 65 | as-expected | error[myc-check]: check error in `main`: a `wild` block has no synthesizable type — its body i |
-| `method-call-sugar` | postfix method / field syntax `x.m()` | 65 / 65 | 65 / 65 | as-expected | error[myc-parse]: expected `;` to terminate this item (DN-57: `;` is the mandatory component ter |
-| `paren-unit-not-a-type` | bare `()` spelled as a type | 65 / 65 | 65 / 65 | as-expected | error[myc-parse]: expected a type, found RParen |
-| `process-spawn-wait` | spawn a real child process and reap its exit status | 0 / 0 | 0 / 0 | as-expected | — |
-| `pure-std-unreachable` | calling ANY pure std function from .myc source | 65 / 65 | 65 / 65 | as-expected | error[myc-check]: check error in `main`: unknown function/constructor/prim `to_json` |
-| `statement-sequencing` | imperative statement sequencing (`let a = …; let b = …; b`) with no `in` | 65 / 65 | 65 / 65 | as-expected | error[myc-parse]: expected `in` after the let binding, found Semi |
-| `unit-as-main-result` | `myc run` executing a main whose result is a data/ADT value (here Unit) | 0 / 65 | 0 / 65 | as-expected | error[myc-run-eval]: the program evaluated to a data value; use eval_core for the data fragment |
-| `wild-denied-outside-std-sys` | `wild` is refused outside an @std-sys nodule (audited FFI floor boundary) | 65 / 65 | 65 / 65 | as-expected | error[myc-check]: check error in `main`: `wild` is denied outside a `@std-sys` nodule — the au |
-| `wild-effect-undeclared` | an undeclared `ffi` effect is refused (RFC-0014 s4.5 I3, no undeclared effects) | 65 / 65 | 65 / 65 | as-expected | error[myc-check]: check error in `main`: `main` performs effect `ffi` (via a `wild` block (the F |
-| `wild-executes-clock` | `wild {}` dispatches a registered host op and returns a real value | 0 / 0 | 0 / 0 | as-expected | — |
-| `wild-executes-rand` | host entropy op returns real bytes through `wild {}` | 0 / 0 | 0 / 0 | as-expected | — |
-| `wild-return-type-unenforced` | whether a fn's declared result type is ENFORCED across a `wild` boundary | 0 / 0 | 0 / 0 | as-expected | — |
+The `build` column is `myc build --native --out <tmp>` (PKG-WP9-AOT / S-AOT-PROBE-HARNESS),
+shown as `expect / got`. `—` means the probe declares no `@expect-build` claim at all (not
+measured, not a gap); `skip / (not run)` means the probe declares `@expect-build: skip`
+(claim intentionally deferred). Every other value is a real measurement folded into the same
+as-expected/DRIFT accounting as `check`/`run`.
+
+| probe | capability | expect check/run | got check/run | build (expect/got) | status | first diagnostic |
+|-------|-----------|------------------|---------------|---------------------|--------|------------------|
+| `aot-closure-capture` | general higher-order call (a function-typed value applied through App, not a | 0 / 0 | 0 / 0 | 64 / 64 | as-expected | — |
+| `aot-native-flag-absent` | `myc build --native` exists as a real build mode (not just parsed and ignored) | 0 / 0 | 0 / 0 | 64 / 64 | as-expected | — |
+| `aot-recursive-fixgroup` | mutual sibling recursion between two top-level fns (the FixGroup shape B1/B2 target) | 0 / 0 | 0 / 0 | 64 / 64 | as-expected | — |
+| `aot-scalar-in-subset` | pure Binary{8} scalar bit ops (XOR) — the exact V0 ABI slice PKG-WP9-AOT scopes for | 0 / 0 | 0 / 0 | 64 / 64 | as-expected | — |
+| `aot-wild-effect` | `myc build --native` on a program with a `wild {}` host-effect call — host-effect | 0 / 0 | 0 / 0 | 64 / 64 | as-expected | — |
+| `http-request-default-build` | networking (wild:http_request) reaching a live HTTPS host | 0 / 0 | 0 / 0 | — | as-expected | — |
+| `let-chain-effectful` | nested `let … in` sequencing of multiple effectful host calls | 0 / 0 | 0 / 0 | — | as-expected | — |
+| `let-wild-annotated-residual` | `let` binding a `wild` block WITH a type annotation on the binding | 0 / 70 | 0 / 70 | — | as-expected | error[myc-run-residual]: `main` is outside the evaluation-complete fragment (RFC-0007 §4.6): co |
+| `let-wild-unannotated` | `let` binding a `wild` block with NO type annotation and NO ascription | 65 / 65 | 65 / 65 | — | as-expected | error[myc-check]: check error in `main`: a `wild` block has no synthesizable type — its body i |
+| `method-call-sugar` | postfix method / field syntax `x.m()` | 65 / 65 | 65 / 65 | — | as-expected | error[myc-parse]: expected `;` to terminate this item (DN-57: `;` is the mandatory component ter |
+| `paren-unit-not-a-type` | bare `()` spelled as a type | 65 / 65 | 65 / 65 | — | as-expected | error[myc-parse]: expected a type, found RParen |
+| `process-spawn-wait` | spawn a real child process and reap its exit status | 0 / 0 | 0 / 0 | — | as-expected | — |
+| `pure-std-unreachable` | calling ANY pure std function from .myc source | 65 / 65 | 65 / 65 | — | as-expected | error[myc-check]: check error in `main`: unknown function/constructor/prim `to_json` |
+| `statement-sequencing` | imperative statement sequencing (`let a = …; let b = …; b`) with no `in` | 65 / 65 | 65 / 65 | — | as-expected | error[myc-parse]: expected `in` after the let binding, found Semi |
+| `unit-as-main-result` | `myc run` executing a main whose result is a data/ADT value (here Unit) | 0 / 65 | 0 / 65 | — | as-expected | error[myc-run-eval]: the program evaluated to a data value; use eval_core for the data fragment |
+| `wild-denied-outside-std-sys` | `wild` is refused outside an @std-sys nodule (audited FFI floor boundary) | 65 / 65 | 65 / 65 | — | as-expected | error[myc-check]: check error in `main`: `wild` is denied outside a `@std-sys` nodule — the au |
+| `wild-effect-undeclared` | an undeclared `ffi` effect is refused (RFC-0014 s4.5 I3, no undeclared effects) | 65 / 65 | 65 / 65 | — | as-expected | error[myc-check]: check error in `main`: `main` performs effect `ffi` (via a `wild` block (the F |
+| `wild-executes-clock` | `wild {}` dispatches a registered host op and returns a real value | 0 / 0 | 0 / 0 | — | as-expected | — |
+| `wild-executes-rand` | host entropy op returns real bytes through `wild {}` | 0 / 0 | 0 / 0 | — | as-expected | — |
+| `wild-return-type-unenforced` | whether a fn's declared result type is ENFORCED across a `wild` boundary | 0 / 0 | 0 / 0 | — | as-expected | — |
 
 ## How to add a capability claim
 
 Write a probe, do not write a sentence. `probes/<id>.myc` with the `@probe`, `@capability`,
 `@expect-check` and `@expect-run` headers, then run `MYC=/path/to/myc scripts/capability-probe.sh`.
+Add `@expect-build: <exit>|skip` only if the probe also makes a claim about `myc build --native`
+(PKG-WP9-AOT) — it is optional and additive; omitting it makes no claim and is not a gap.
 If a claim cannot be expressed as a program, that inexpressibility is itself the finding and
 belongs in the narrative doc with an explicit "not probe-able" note — never as an unmeasured
 status claim, which is exactly how this document's predecessor went stale.
