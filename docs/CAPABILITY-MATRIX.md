@@ -4,10 +4,10 @@
 
 | Field | Value |
 |-------|-------|
-| **Measured** | 2026-08-04T15:01:35Z |
-| **Binary** | `/opt/actions-runner/_work/_temp/cli/target/release/myc` (sha256 `1ef918ad06e7b5fd…`) |
+| **Measured** | 2026-08-04T23:27:22Z |
+| **Binary** | `/opt/actions-runner/_work/_temp/cli/target/release/myc` (sha256 `dfdcd819327f8b79…`) |
 | **Cargo features** | `default (cargo build --release)` |
-| **Probes** | 20 (18 as-expected, 0 drift, 2 skipped) |
+| **Probes** | 20 (17 as-expected, 1 drift, 2 skipped) |
 
 Every row below was produced by running a program in `probes/`. Nothing here is asserted.
 `expect` is what the probe declares; `got` is what this run observed. **DRIFT** means the two
@@ -38,7 +38,7 @@ as-expected/DRIFT accounting as `check`/`run`.
 | `process-spawn-wait` | spawn a real child process and reap its exit status | 0 / 0 | 0 / 0 | — | as-expected | — |
 | `pure-std-unreachable` | calling ANY pure std function from .myc source | 65 / 65 | 65 / 65 | — | as-expected | error[myc-check]: check error in `main`: unknown function/constructor/prim `to_json` |
 | `statement-sequencing` | imperative statement sequencing (`let a = …; let b = …; b`) with no `in` | 65 / 65 | 65 / 65 | — | as-expected | error[myc-parse]: expected `in` after the let binding, found Semi |
-| `unit-as-main-result` | `myc run` executing a main whose result is a data/ADT value (here Unit) | 0 / 65 | 0 / 65 | — | as-expected | error[myc-run-eval]: the program evaluated to a data value; use eval_core for the data fragment |
+| `unit-as-main-result` | `myc run` executing a main whose result is a data/ADT value (here Unit) | 0 / 65 | 0 / 0 | — | **DRIFT** | — |
 | `wild-denied-outside-std-sys` | `wild` is refused outside an @std-sys nodule (audited FFI floor boundary) | 65 / 65 | 65 / 65 | — | as-expected | error[myc-check]: check error in `main`: `wild` is denied outside a `@std-sys` nodule — the au |
 | `wild-effect-undeclared` | an undeclared `ffi` effect is refused (RFC-0014 s4.5 I3, no undeclared effects) | 65 / 65 | 65 / 65 | — | as-expected | error[myc-check]: check error in `main`: `main` performs effect `ffi` (via a `wild` block (the F |
 | `wild-executes-clock` | `wild {}` dispatches a registered host op and returns a real value | 0 / 0 | 0 / 0 | — | as-expected | — |
