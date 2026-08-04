@@ -3,7 +3,7 @@
  "title": "Interpreter/CLI correctness: data results, let+wild residual, --version",
  "wp": "WP-11",
  "priority": "P0",
- "status": "pre-freeze",
+ "status": "frozen",
  "hub_issue": "https://github.com/tzervas/mycelium-lang/issues/45",
  "title_prefix": "train/gap-closure:",
  "goal": "Close 3 measured interpreter/CLI correctness defects plus the --version gap that blocks ap-workflows' version pin, each as a small, single-repo, test-pinned fix against MEASURED behavior (not the stale docs): (a) `myc run` refuses any program whose `main` evaluates to an algebraic data/ADT value (calls Interpreter::eval, which hard-refuses CoreValue::Data) instead of calling the already-existing Interpreter::eval_core and rendering the result; (b) mycelium-l1's elaborator silently drops a `let`'s own type ascription and re-infers in synthesis mode, which fails specifically for a `wild { ... }`-bound let (wild has no synthesizable type by design) even though the identical program checked clean under `myc check` \u2014 EX_SOFTWARE 70 at run time on a program `myc check` already called healthy; (c) the wild-boundary result type is trusted, never verified against what the host op actually returns, and today this failure mode is completely SILENT (checks clean, runs clean, wrong value flows into ordinary code) which violates this project's own G2 \"never silent\" posture even though full static/dynamic enforcement is out of reach for a single-repo package; (d) `myc --version` and `myc-check --version` both fail today (exit 64 / exit 66) which blocks ap-workflows/reusable-ci-mycelium.yml's `mycelium-version` pin-verification step from ever succeeding.",

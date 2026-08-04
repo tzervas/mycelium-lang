@@ -2,7 +2,7 @@
 
 **Owning repo:** `mycelium-std-io`  
 **Package:** `PKG-LINKAGE` (https://github.com/tzervas/mycelium-lang/issues/44)  
-**Status:** proposed — NOT yet frozen
+**Status:** FROZEN (mycelium-lang PR #49, merged 2026-08-04)
 
 ## Proposed signature
 
