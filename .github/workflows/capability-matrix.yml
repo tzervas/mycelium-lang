@@ -125,7 +125,13 @@ jobs:
             exit 0
           fi
           br="chore/capability-matrix-$(git rev-parse --short HEAD)"
-          echo "BR=$br" >> "$GITHUB_ENV"
+          # `$br` is used DIRECTLY below — deliberately not exported via $GITHUB_ENV.
+          # An earlier revision wrote `BR=$br` to $GITHUB_ENV and then read it back as
+          # `env.BR` in this SAME step's `env:` block. That is always empty: $GITHUB_ENV
+          # only takes effect for SUBSEQUENT steps, and a step's `env:` is evaluated
+          # before the step body runs. The observed result was a PR payload with
+          # "head": "" — the run logged `PR_HEAD:` blank while the branch itself had
+          # pushed fine, so the branch existed and the PR could never be created.
           if git ls-remote --exit-code --heads origin "$br" >/dev/null 2>&1; then
             echo "branch $br already exists — a refresh is already in flight"; exit 0
           fi
@@ -157,17 +163,25 @@ jobs:
           # which ends the YAML literal block — the very trap the comment above warns about, and
           # which an earlier revision of THIS patch fell into. Body travels via the environment,
           # never as an argument, so quoting in the body cannot break the command.
-          payload=$(PR_BODY="$body" python3 -c 'import json,os;print(json.dumps({"title":os.environ["PR_TITLE"],"head":os.environ["PR_HEAD"],"base":"main","body":os.environ["PR_BODY"]}))')
+          payload=$(PR_BODY="$body" PR_HEAD="$br" python3 -c 'import json,os;print(json.dumps({"title":os.environ["PR_TITLE"],"head":os.environ["PR_HEAD"],"base":"main","body":os.environ["PR_BODY"]}))')
           code=$(printf '%s' "$payload" | curl -sS -o /tmp/prcreate.out -w '%{http_code}' \
             -X POST -H "Authorization: Bearer ${GITHUB_TOKEN}" \
             -H "Accept: application/vnd.github+json" --data @- \
             "${GITHUB_API_URL}/repos/${GITHUB_REPOSITORY}/pulls")
+          # 403 is NOT treated as a job failure, and that is a deliberate policy choice.
+          # It means the repo has "Allow GitHub Actions to create and approve pull
+          # requests" disabled (API: can_approve_pull_request_reviews=false). That
+          # single toggle grants Actions the power to APPROVE pull requests as well as
+          # open them, which would let an automated identity satisfy a review gate — so
+          # leaving it off is the safer posture, and this workflow must degrade rather
+          # than demand it. The refreshed branch IS already pushed at this point, so
+          # nothing is lost: the run surfaces the compare link and a human opens the PR.
           case "$code" in
             201) echo "opened: $(python3 -c 'import json;print(json.load(open("/tmp/prcreate.out"))["html_url"])')" ;;
-            422) echo "::warning title=PR already exists::a PR for ${PR_HEAD} is already open; leaving it alone" ;;
+            422) echo "::warning title=PR already exists::a PR for ${br} is already open; leaving it alone" ;;
+            403) echo "::warning title=Actions may not open PRs::branch ${br} is pushed but Actions cannot open the PR (repo setting 'Allow GitHub Actions to create and approve pull requests' is off, which also gates PR APPROVAL and is intentionally left off). Open it here: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/compare/main...${br}?expand=1" ;;
             *)   echo "::error::PR creation failed (HTTP $code): $(head -c 300 /tmp/prcreate.out)"; exit 1 ;;
           esac
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_TITLE: "chore(docs): regenerate measured capability matrix"
-          PR_HEAD: ${{ env.BR }}
