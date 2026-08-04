@@ -20,7 +20,7 @@ Self-hosted **presentation / re-export umbrella** for Mycelium **Rust** componen
 
 ### Progressive OS / arch matrix
 
-See **[docs/SUPPORT_MATRIX.md](docs/SUPPORT_MATRIX.md)**, **[docs/COMPONENT_READINESS.md](docs/COMPONENT_READINESS.md)** (per-repo pins), **[docs/SHOWCASES.md](docs/SHOWCASES.md)** (fast vs certified demos) and machine-readable
+See **[docs/SUPPORT_MATRIX.md](docs/SUPPORT_MATRIX.md)**, **[docs/COMPONENT_READINESS.md](docs/COMPONENT_READINESS.md)** (per-repo pins), **[docs/SHOWCASES.md](docs/SHOWCASES.md)** (fast vs certified demos), **[docs/DOCS_GAP_CATALOG.md](docs/DOCS_GAP_CATALOG.md)** (measured per-component documentation gaps) and machine-readable
 [`.github/draw-in-matrix.json`](.github/draw-in-matrix.json).
 
 | Tier | Today (required) | Expanding |
@@ -57,7 +57,7 @@ and documents how to use the language surface without browsing the historical mo
 | **Native .myc train umbrella** | [`tzervas/mycelium-lang-myc`](https://github.com/tzervas/mycelium-lang-myc) |
 | **Component map** | monorepo `docs/planning/gap-analysis-2026-07-16/COMPONENT-REPO-MAP-DRAFT.md` |
 | **Honesty** | Umbrella is operational wiring; not DN-88 production-ready dogfood; not a SemVer 1.0 claim |
-| **Train** | **v0.464.0** (course-correction Phase B, 2026-07-18) — all 45 Rust component pins are **verified buildable** (fmt + clippy `-D warnings` + tests green standalone). Pins carry rev **+ content hash** (git tree hash). |
+| **Train** | **v0.464.0** (course-correction Phase B, 2026-07-18) — all 45 Rust component pins are **verified buildable** (fmt + clippy `-D warnings` + tests green standalone), **measured** by a full-scope draw-in on 2026-07-23, not asserted. Pins carry rev **+ content hash** (git tree hash). |
 
 ## Component groups (Rust)
 
