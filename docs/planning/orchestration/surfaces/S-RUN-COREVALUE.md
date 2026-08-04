@@ -2,7 +2,7 @@
 
 **Owning repo:** `tzervas/mycelium-cli`  
 **Package:** `PKG-INTERP-CORRECTNESS` (https://github.com/tzervas/mycelium-lang/issues/45)  
-**Status:** proposed — NOT yet frozen
+**Status:** CORRECTED 2026-08-04 — the originally proposed path was wrong
 
 ## Proposed signature
 
@@ -33,3 +33,21 @@ eval_core()/CoreValue already exist unchanged in mycelium-runtime (crates/myceli
 Once frozen, this signature may not be renamed or widened by an implementer lane. A lane that
 needs a change must stop and raise it on the package hub — silent divergence here is what the
 zipper methodology exists to prevent.
+
+## Correction (2026-08-04)
+
+The originally proposed signature named `mycelium_interp::CoreValue`. **That path does not exist for
+a downstream crate and would not compile.** Verified in `mycelium-interp/src/lib.rs`: line 129 is a
+plain `use mycelium_core::{Alt, CoreValue, Datum, GuaranteeStrength, Node, Repr, Value, WfError};`,
+and the crate's `pub use` lines (132-136) re-export `budget`, `host`, `parallel`, `prims` and
+`supervise` — but never `CoreValue` or `Datum`.
+
+The implementing lane flagged this rather than silently working around it, which is the behaviour the
+freeze contract is meant to produce. The correct spelling is **`mycelium_core::CoreValue`**, reached
+via a direct `mycelium-core` dependency pinned to the same commit `mycelium-interp` and `mycelium-l1`
+already resolve internally. Function name, arity, match arms and the byte-identical `Repr` rendering
+are unchanged; only the fully-qualified type path differs, which is a necessary consequence of Rust's
+re-export rules rather than a design change.
+
+Lesson for future surfaces: a proposed signature that names a type through another crate must be
+checked against that crate's `pub use` list, not merely against where the type is used.
