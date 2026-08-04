@@ -1,0 +1,138 @@
+{
+ "id": "PKG-FRONTEND-ERGONOMICS",
+ "title": "Frontend surface: statement sequencing, method/postfix, () unit spelling",
+ "wp": "WP-12",
+ "priority": "P1",
+ "status": "pre-freeze",
+ "hub_issue": "https://github.com/tzervas/mycelium-lang/issues/46",
+ "title_prefix": "train/gap-closure:",
+ "goal": "Close the three frontend ergonomics gaps that block 'ordinary programs' in Mycelium L1 \u2014 statement sequencing, method/postfix call syntax, and the `()` unit spelling \u2014 as measured by mycelium-transpile --vet on real Rust (multi-statement 38+, method sugar 31+, unit 13+ per hub issue tzervas/mycelium-l1#6). All three are parser-only (KC-3, zero kernel/eval/mono growth), matching the codebase's own precedent (the already-landed-but-unmerged block-sequencing PR). Landing them removes the specific frontend blocker that stops an IR modelling imperative statement sequences or method dispatch from lowering to .myc (py2rust -> IR -> Rust, mycelium-transpile consuming the same IR).",
+ "non_goals": [
+  "Non-unsigned/string/struct value-type gaps (14+ in the vet count) \u2014 tracked by hub issue l1#6 but explicitly excluded from this package's repo/LOC scope; a separate package.",
+  "Named-field record syntax / `.field` projection (G4, DN-106 fork B was REJECTED) \u2014 this package's dot-postfix production is call-only (`.ident(args)`), never a bare field-access form.",
+  "Fixing the CLI's `myc run` refusal of `CoreValue::Data` results (open gap #2 in the ground truth) \u2014 pre-existing, mycelium-cli-owned, unrelated to parsing; success criteria route around it by using scalar-returning fixtures where run-verification is claimed.",
+  "A losslessly-round-trippable AST node for method calls in mycelium-l1 (would let mycelium-fmt/mycelium-transpile recover original `.method()` vs `method(x)` surface shape after parse). This package deliberately desugars at parse time with NO new AST node (same shape as the landed block-sequencing precedent), which is irreversibly lossy for fmt round-trip \u2014 accepted as a documented limitation, not fixed here.",
+  "Full production-grade closure of the mycelium-transpile vet counts to zero. This package delivers one representative, tested emission path each for the MultiStmtBody-via-semicolon-statement case and the unmapped-method-call case, plus a fresh honest before/after --vet count. Driving every one of the 38+/31+ real sites to green is follow-on scope.",
+  "Cross-nodule/cross-crate import mechanism work (OPEN gap #1, the 26 unreachable mycelium-std-* crates) \u2014 orthogonal keystone gap, not in this package's repo set.",
+  "wild-boundary type enforcement, AOT native path, --version, or any of the other OPEN ground-truth gaps not named in this package's WHAT-THIS-COVERS list."
+ ],
+ "surfaces": [
+  "FE-1-BLOCK-SEQ",
+  "FE-2-UNIT-PAREN",
+  "FE-3-METHOD-POSTFIX"
+ ],
+ "lanes": [
+  {
+   "id": "L-ZIP",
+   "repo": "tzervas/mycelium-lang",
+   "role": "zipper",
+   "branch_hint": "train/frontend-ergonomics-zip",
+   "depends_on_lanes": [],
+   "deliverables": [
+    "Freeze FE-1-BLOCK-SEQ in docs/planning/orchestration/surfaces/FE-1-BLOCK-SEQ.md (signature + rationale only)",
+    "Freeze FE-2-UNIT-PAREN in docs/planning/orchestration/surfaces/FE-2-UNIT-PAREN.md (signature + rationale only)",
+    "Freeze FE-3-METHOD-POSTFIX in docs/planning/orchestration/surfaces/FE-3-METHOD-POSTFIX.md (signature + rationale only)",
+    "Contract tests may be #[ignore] until implementers land"
+   ],
+   "depends_on_surface": "",
+   "checkable_done": "All surface files merged; no implementer lane starts before this."
+  },
+  {
+   "id": "L-MYCELIUM-L1",
+   "repo": "tzervas/mycelium-l1",
+   "role": "implementer",
+   "branch_hint": "train/frontend-ergonomics-mycelium-l1",
+   "depends_on_lanes": [
+    "L-ZIP"
+   ],
+   "deliverables": [
+    "Branch off `dev` (tip verified 5c031df). STEP 1 (near-zero-risk, mostly review): rebase and land the three already-open PRs in order \u2014 #7 `docs/multistmt-inventory` (mergeStateStatus CLEAN today), #9 `docs/expression-gap-map` (UNSTABLE \u2014 needs the `dev` `check` CI context to run green post-rebase), #8 `feat/block-statement-sequencing` (UNSTABLE \u2014 same). Do NOT re-derive their content; they already implement/prove FE-1 (10/10 tests passing, verified this session on bae8075). Push each as a rebase onto current `dev` (no conflicts expected \u2014 the only intervening commit touches CI/docs, not parse.rs). STEP 2: new branch `feat/unit-paren-sugar` off `dev` implementing FE-2 \u2014 edit `crates/mycelium-l1/src/parse.rs`'s `parse_primary` `Tok::LParen` arm and `parse_base_type` `Tok::LParen` arm to add the immediate-RParen lookahead described in FE-2; add `tests/unit_paren_sugar.rs` mirroring `multi_statement_body.rs`'s style: parse-AST-identity tests (`()` body vs `Unit` body; `()` type vs `Unit` type), plus end-to-end check/elaborate tests. As a required follow-up in the SAME PR (or an immediate stacked PR), revisit PR #8's `parse_block` refusal sites for empty `{}` and trailing-`;` blocks: decide explicitly (with a test proving the decision) whether they now desugar to an implicit `Unit` tail or remain hard refusals with an updated error message that no longer claims '`()` is not a surface spelling yet' (false once FE-2 lands) \u2014 do not leave a stale error message in the tree. STEP 3: new branch `feat/method-postfix-call` off `dev` implementing FE-3 \u2014 edit `parse_path` (add the call-lookahead-stop, scoped via a new function or bool parameter so `use`/`nodule`/`phylum`/pattern-parsing call sites are provably unaffected \u2014 add a regression test asserting `use foo.bar;`, a `nodule x.y;` header, and a `Ctor(sub)` pattern all parse byte-identically before/after) and `parse_app`'s trailing loop (add the `.name(args)` postfix arm). Add `tests/method_postfix.rs`: (a) parse-AST-identity test, `answer().identity()` vs hand-written `identity(answer())`; (b) end-to-end check+run test using a Binary{8}-returning fixture (sidesteps the unrelated CLI Data-result bug) asserting `myc run` prints the correct value; (c) explicit regression tests for the FE-3 edge cases (bare-identifier receiver `n.identity()` now sugars; non-call `d.g` unaffected, still refused with today's exact message; mixed `a.b.c(x)` parses but still refuses at check on `a.b`). Update `docs/spec/grammar/mycelium.ebnf` for both FE-2 and FE-3. All PRs target `dev`, cite `Part of #6` (hub issue tzervas/mycelium-l1#6), no Cargo.lock committed."
+   ],
+   "depends_on_surface": "FE-1-BLOCK-SEQ,FE-2-UNIT-PAREN,FE-3-METHOD-POSTFIX",
+   "checkable_done": "`gh pr list --repo tzervas/mycelium-l1 --state merged` shows #7, #8, #9, plus the new unit-paren-sugar and method-postfix-call PRs, all merged to `dev` with the `check` context green. `cargo test --release` (full suite) passes with 0 failures on `dev` tip. The exact fixtures `fn f() => Binary{8} = { g(1); g(2); 3 };`, `fn f() => Unit = ();`, `fn f() => () = ...;` (type position), and `fn f() => Binary{8} = answer().identity();` all produce `myc check` exit 0; the last one additionally produces the correct value under `myc run`."
+  },
+  {
+   "id": "L-MYCELIUM-TRANSPILE",
+   "repo": "tzervas/mycelium-transpile",
+   "role": "implementer",
+   "branch_hint": "train/frontend-ergonomics-mycelium-transpile",
+   "depends_on_lanes": [
+    "L-ZIP"
+   ],
+   "deliverables": [
+    "BLOCKED start: do not begin implementation until the mycelium-l1 lane's PRs are merged to `dev` AND a `train/repin-l1-<sha>`-style PR (matching the existing repin pattern already in this repo's git log, e.g. PR #10/#11/#13) bumps this repo's `mycelium-l1` git-rev dependency pin to that merged commit \u2014 no path deps in this ecosystem, so nothing here compiles against the new syntax until the pin moves. Work item A (does NOT need FE-3, only the pre-existing, already-working `let _ = e in body`): extend `emit_block_as_expr_inner` in `src/emit.rs` to stop hard-gapping the `Stmt::Expr(_, _)` arm (currently: 'function body has a semicolon-terminated (value-discarding) statement expression before the tail' \u2014 Category::MultiStmtBody) \u2014 lower it to `let _ = <e> in <rest>` exactly as the `Stmt::Local` arm already does for real `let` bindings, threading `local_env` identically via the existing `emit_local_binding` pattern. Work item B (needs FE-1 merged + repinned): once the `{ }` block surface exists, prefer emitting it over deep nested-let chains for readability when a Rust body has multiple non-let/semicolon statements \u2014 pure emission-shape change, tested against `src/tests/emit.rs`'s existing MultiStmtBody fixtures. Work item C (needs FE-3 merged + repinned): extend the existing `Expr::MethodCall` handling in `src/emit.rs` (already has an arm at ~line 153 plus the `prim_map`/`ReceiverGate` machinery in `src/prim_map.rs`) with a NEW fallback: when a method call has no `prim_map` entry (today gapped via `is_unmappable_conversion_method`/`conversion_gap_reason`, `emit.rs:1567-1568`) but receiver and method resolve to a known local type/fn (not a builtin-scalar conversion no-op, which stays correctly gapped per the existing DN-125/DN-136 rules), emit `recv.method(args)` verbatim as Mycelium dot-syntax instead of gapping. Do not touch the `ReceiverGate::AnyBuiltinScalar`-gated identity/no-op rules. Work item D (measurement, always in scope): re-run `mycelium-transpile --vet` against the same real-Rust corpus the roadmap's counts came from (gha-runner-ctl, per hub issue l1#6's body) and record a fresh MultiStmtBody / unmapped-method-call count in the PR description as an honest before/after delta \u2014 do not claim these hit zero unless they measurably do."
+   ],
+   "depends_on_surface": "FE-1-BLOCK-SEQ,FE-3-METHOD-POSTFIX",
+   "checkable_done": "A `train/repin-l1-<sha>` PR is merged bumping the `mycelium-l1` git-rev pin in `Cargo.toml`. `cargo test` (full suite) passes with 0 regressions. New tests in `src/tests/emit.rs` prove: (1) a Rust fn body with a semicolon-terminated non-let statement followed by a tail expression now emits (does not gap) \u2014 assert the exact `.myc` output string; (2) at least one previously-gapped unmapped-method-call fixture now emits `recv.method(args)` instead of a gap. `--vet` re-run output (attached to the PR) shows the MultiStmtBody and method-call gap counts for the reference corpus are lower than the roadmap's cited 38+/31+ baseline, with exact numbers stated."
+  },
+  {
+   "id": "L-MYCELIUM-FMT",
+   "repo": "tzervas/mycelium-fmt",
+   "role": "implementer",
+   "branch_hint": "train/frontend-ergonomics-mycelium-fmt",
+   "depends_on_lanes": [
+    "L-ZIP"
+   ],
+   "deliverables": [
+    "Same repin-gating as the transpile lane: do not start until mycelium-l1's PRs are merged and this repo's git-rev pin is bumped via its own `train/repin-l1-<sha>` PR. Work item: teach the pretty-printer to recognize a right-nested `Expr::Let{name:\"_\",ty:None,bound,body}` chain (the exact shape FE-1's desugar produces) and print it back using the `{ a; b; c }` block surface instead of the current deeply-nested `let _ = a in let _ = b in c` rendering \u2014 mirror the existing canonicalization precedent already in `src/lib.rs` for right-nested App chains (the 'R1: a right-nested same-head chain' logic around line ~1966-1989) rather than inventing a new pattern-matching style. Fall back to the current nested-let rendering for any `Let{name:\"_\",..}` chain that does not cleanly terminate in a non-Let tail (never fabricate an incorrect/shortened print \u2014 G2). Add golden/round-trip fixtures to `tests/conformance.rs`. EXPLICIT NON-GOAL, must be documented in the PR description and a code comment at the print site: mycelium-fmt CANNOT and MUST NOT attempt to reconstruct `recv.method(args)` dot-call surface on reprint \u2014 FE-3 desugars at parse time with no distinguishing AST node (frozen fact, see surface FE-3), so every method call will always canonicalize to prefix `method(recv, args)` form after a parse/reprint round trip. Add a test that pins this as EXPECTED behavior so a future contributor doesn't 'fix' it without a deliberate design change (promoting method-call to a real AST node \u2014 out of scope here)."
+   ],
+   "depends_on_surface": "FE-1-BLOCK-SEQ,FE-3-METHOD-POSTFIX",
+   "checkable_done": "A `train/repin-l1-<sha>` PR is merged. `cargo test` passes with 0 regressions. A new golden fixture proves `let _ = a in let _ = b in c` (and 3+ deep chains) reformat to `{ a; b; c }`. A new fixture explicitly pins the method-call non-goal: formatting `identity(answer())` (the AST shape FE-3 always produces) reprints as `identity(answer())`, never `answer().identity()`, with an inline comment citing FE-3 as the reason."
+  }
+ ],
+ "blocked_by": [],
+ "unblocks": [
+  "The shared-IR hub design (py2rust -> IR -> Rust, mycelium-transpile consuming the same IR for lang->IR->lang): an IR that models imperative statement sequences or method dispatch cannot lower to .myc source until FE-1 and FE-3 land in mycelium-l1 and are repinned into mycelium-transpile.",
+  "Any future package aiming to drive mycelium-transpile's --vet MultiStmtBody/method-sugar counts toward zero \u2014 this package supplies the L1 surface and one proven emission path each; full corpus closure is follow-on work this package unblocks but does not itself complete.",
+  "Hub issue tzervas/mycelium-l1#6 ('[Epic] Frontend-surface gaps for ordinary programs') moves from fully-open toward partially-closed (unit value + method sugar + multi-statement addressed; non-unsigned/string/struct types explicitly still open, tracked separately)."
+ ],
+ "success_criteria": [
+  "`fn f() => Binary{8} = { g(0b0000_0001); g(0b0000_0010); 0b0000_0011 };` parses, `myc check` exits 0, and this is proven by a merged PR to mycelium-l1 `dev` (PRs #7, #8, #9 rebased+merged), not a fresh reimplementation.",
+  "`fn f() => Unit = ();` and a `()` return-type spelling both parse and `myc check` exits 0; both produce parse-AST identical to hand-writing `Unit` (word form), verified by an explicit AST-equality test.",
+  "`fn f() => Binary{8} = answer().identity();` (the exact roadmap repro, reproduced failing today at parse position 4:31 'found Dot') parses, `myc check` exits 0, and `myc run` returns the correct scalar value.",
+  "`d.g` (a bare non-call dotted identifier chain) still parses to a 2-segment Path and still fails `myc check` with the SAME 'multi-segment qualified-path ... deferred in v0 (M-662)' message it produces today \u2014 zero regression in the existing (dead but explicitly-refused) qualified-path route.",
+  "`use foo.bar;`, a `nodule x.y;` header, and a `Ctor(sub)` pattern all still parse byte-identically before and after the FE-3 change (regression tests included in the PR).",
+  "mycelium-transpile: at least one previously-`Category::MultiStmtBody`-gapped Rust fn body (semicolon-terminated statement before the tail) now emits valid `.myc` instead of gapping, proven by a before/after test in `src/tests/emit.rs`.",
+  "mycelium-transpile: at least one previously-gapped unmapped Rust `.method()` call now emits Mycelium dot-syntax instead of gapping, proven by a before/after test.",
+  "mycelium-transpile: a fresh `--vet` run against the reference corpus (gha-runner-ctl, per l1#6) records MultiStmtBody and method-call gap counts strictly below the roadmap's cited 38+/31+ baseline, with exact numbers in the PR.",
+  "mycelium-fmt: a `let _ = a in let _ = b in c` fixture reformats to `{ a; b; c }`, and a pinned fixture documents that method-call round-trip is NOT attempted (by design, per FE-3).",
+  "All PRs across all three repos target `dev` (never `main`), cite hub issue tzervas/mycelium-l1#6, and no repo gains a committed Cargo.lock.",
+  "Full `cargo test --release` in each of the three repos passes with zero regressions relative to each repo's current `dev` tip."
+ ],
+ "adversarial_checklist": [
+  "Diff mycelium-l1's FE-2/FE-3 PRs and confirm ZERO lines touch eval.rs, checkty.rs (beyond, at most, an unavoidable error-message string), mono.rs, or elab.rs \u2014 everything must be parse.rs + tests + grammar doc (KC-3 zero-kernel-growth claim must hold, not just be asserted).",
+  "Independently re-derive the FE-3 disambiguation-safety argument (that multi-segment Path is unconditionally check-refused today) by running `myc check` against a fresh `d.g` fixture on the PRE-change tree \u2014 do not trust this document's citation alone.",
+  "Run the FULL existing conformance/accept/reject corpus (`tests/conformance.rs` and friends) before and after FE-3 lands, diffed byte-for-byte, to catch any accidental behavior change in unrelated dotted-path use sites (`use`, `nodule`, `phylum`, `swap policy:`, pattern `Ctor(sub)`).",
+  "Confirm the mixed-chain edge case `a.b.c(x)` (non-call intermediate segment before a trailing call) is covered by an explicit test and produces the documented check-time refusal on `a.b`, not a parse error and not a silent misinterpretation as `c(a.b, x)`.",
+  "Confirm PR #8's two hard block-refusals (empty `{}`, trailing `;`) were EXPLICITLY revisited once FE-2 landed \u2014 either intentionally left refusing (with an updated, non-stale error message) or intentionally upgraded to desugar to `Unit` \u2014 and that whichever was chosen has its own test, not just a deleted assertion.",
+  "Confirm mycelium-transpile's new method-call emission path still gaps (never fabricates) any call where receiver/method resolution is ambiguous or unknown \u2014 spot-check against `is_unmappable_conversion_method`/`ReceiverGate::AnyBuiltinScalar` cases to ensure those correct existing refusals were not accidentally loosened.",
+  "Confirm mycelium-transpile's semicolon-statement lowering threads `local_env` type tracking identically to the existing `let`-chain path (no silent loss of type info for bindings/expressions after the first non-let statement).",
+  "Confirm mycelium-fmt's block-canonicalization is round-trip safe: `parse(fmt(parse(src))) == parse(src)` on a representative corpus, not just visually plausible output.",
+  "Confirm every cross-repo PR (mycelium-transpile, mycelium-fmt) references the exact mycelium-l1 commit SHA it was repinned to, and that the repin PR itself is a separate, reviewable `train/repin-l1-<sha>`-style commit (per this ecosystem's existing convention) \u2014 not silently folded into a feature PR.",
+  "Confirm no PR targets `main` and no repo gained a tracked Cargo.lock.",
+  "Confirm the `--vet` before/after numbers quoted in the mycelium-transpile PR were actually run on the stated corpus in this session (or are clearly marked as a claim to be verified), not carried over from the roadmap's original (now possibly stale) figures."
+ ],
+ "requires_repin": false,
+ "fleet": {
+  "runner_labels": [
+   "self-hosted",
+   "linux",
+   "x64",
+   "podman"
+  ]
+ },
+ "kickoff_prompt": "You are an implementer on PKG-FRONTEND-ERGONOMICS lane <LANE_ID>, hub https://github.com/tzervas/mycelium-lang/issues/46. Touch ONE repo only. Work against the FROZEN surfaces in docs/planning/orchestration/surfaces/ \u2014 if a surface needs changing, stop and say so; do not rename or widen a frozen signature. The repo's prose docs are STALE: trust docs/CAPABILITY-MATRIX.md and probes/ over any narrative claim. Open one green-CI PR in your lane's repo; never edit a foreign repo in the same PR. Your lane is done only when its checkable_done holds. Prefer 'unknown / needs human' over false closure.",
+ "provenance": {
+  "designed": "2026-08-04",
+  "method": "sonnet sub-planner workflow wf_3b412561-c1d, designed against MEASURED behaviour",
+  "effort_estimate": "L",
+  "risks": [
+   "MEDIUM: the FE-3 parse_path/parse_app disambiguation design is this document's own novel derivation \u2014 it is NOT something the existing mycelium-l1 test suite or maintainer commentary has already validated (unlike FE-1, which is copied from an already-tested branch). It is grounded in a verified fact (check_path's unconditional multi-segment-path refusal) but the adversarial reviewer must independently re-derive it before implementation proceeds, per the review checklist.",
+   "LOW (verified, not assumed): rebase conflict risk for PRs #7/#8/#9 onto current `dev` tip. Checked directly \u2014 the only intervening commit (5c031df) touches only `.github/workflows/fleet-ci.yml`, `fleet-security.yml`, `docs/FLEET_STANDARDS.md`; zero overlap with `parse.rs` or the new test files.",
+   "MEDIUM: mycelium-transpile and mycelium-fmt lanes are hard-blocked on an l1-repin PR (git-dep pin bump, no path deps in this ecosystem) landing AFTER the l1 PRs merge \u2014 a real sequential dependency, not parallelizable with the l1 lane despite being 'separate repos'; scheduling must respect it or the two downstream lanes will simply fail to compile against old syntax.",
+   "MEDIUM: full closure of the transpile vet counts (38+/31+) to zero is explicitly NOT promised by this package \u2014 only a representative working path plus an honest before/after delta. If stakeholders expect the roadmap's raw counts to hit zero, that expectation must be corrected before kickoff, not discovered at review.",
+   "LOW-MEDIUM: mycelium-fmt's inability to round-trip method-call surface (no new AST node in FE-3) is a deliberate, accepted, but real forward-compatibility cost. If a later package needs lossless formatting fidelity for method calls, FE-3 will need to be revisited (promote to a real AST node), which is a larger, riskier change than what's frozen here \u2014 flagged now so it isn't rediscovered as a surprise.",
+   "UNVERIFIED / needs human: whether the hub issue's stated 'Autoclosure: Closed by the delivering PRs to main' text (which predates the dev-is-integration-branch decision) should be updated to say `dev`, or whether issue #6 should only auto-close once the non-unsigned/string/struct-type gap (out of this package's scope) also lands \u2014 recommend the human orchestrator decide the issue's closure condition explicitly rather than letting a `Closes #6` in a `dev`-targeted PR silently close an issue that's only 3/4 addressed."
+  ]
+ }
+}
