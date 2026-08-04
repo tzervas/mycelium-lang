@@ -1,0 +1,10 @@
+[
+ {"id":"R1","question":"Does the change do what its PR body claims, and is the claimed measured baseline consistent with the diff?","evidence_required":"quote the diff line(s) that implement the claim, or the line that contradicts it"},
+ {"id":"R2","question":"Is any test a TAUTOLOGY — would it pass both with and without the production change?","evidence_required":"reason per new/changed test; name any test that cannot fail"},
+ {"id":"R3","question":"Does the change alter real behaviour, or only error text / comments / naming?","evidence_required":"cite the behavioural line, or state that only text changed"},
+ {"id":"R4","question":"Any never-silent violation introduced: a failure path that reports success, a swallowed error, `|| true` masking an exit code, a piped exit code being tested instead of the command's, or a silent-overwrite that could hide a collision?","evidence_required":"cite file:line, or state none found"},
+ {"id":"R5","question":"Does it RENAME or WIDEN any frozen surface signature beyond what the PR explicitly declares?","evidence_required":"compare the diff against the provided surface text element by element"},
+ {"id":"R6","question":"Scope creep: enumerate every changed hunk and classify each as in-scope for the lane's stated work or out-of-scope. Did it edit a foreign repo?","evidence_required":"hunk-by-hunk classification"},
+ {"id":"R7","question":"Is any success criterion claimed as verified that the diff cannot actually deliver?","evidence_required":"quote the claim and the diff gap"},
+ {"id":"R8","question":"Is there a defect the author did NOT mention? Consider specifically the candidate list supplied in the context, if any.","evidence_required":"for each candidate, state whether it is a real problem HERE and why"}
+]
