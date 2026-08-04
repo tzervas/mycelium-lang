@@ -3,7 +3,7 @@
  "title": "CI truthfulness: stop reporting green on work that never ran",
  "wp": "WP-13",
  "priority": "P0",
- "status": "pre-freeze",
+ "status": "frozen",
  "hub_issue": "https://github.com/tzervas/mycelium-lang/issues/48",
  "title_prefix": "train/gap-closure:",
  "goal": "Close gaps (9)(10)(11): stop the fleet from reporting green on work that never ran. Sequence behind ap-workflows PR #30 (merged) + its image republish, then: (a) swap all 45 `*-myc` `placeholder` CI jobs for a real `myc-check` gate via reusable-ci-mycelium.yml (project-dir: lib, deny-warnings: true, acknowledge-not-adopted: true) targeting `dev`; (b) migrate the 49 non-umbrella real-CI Rust component repos (of the 50 REAL-classified repos, excluding the umbrella `mycelium-lang`) from bespoke ci.yml onto reusable-ci-rust.yml with ecosystem-lock-ref wired; (c) ship the missing reusable-train-lane.yml (validates a work-package JSON against schemas/work-package.schema.json and comments the linked hub issue) in ap-workflows; (d) make mycelium-bench's CI actually invoke its own `cargo run --release --bin bench` harness and assert a non-trivial report, so the fleet's `bench=run must FAIL_ENV without a device` posture has something real to gate; (e) produce a measured, human-reviewable verdict on the net-host feature-gate leak (does a default `mycelium-cli` build carry live `http_request` registration despite `net-host` being off?) plus a regression check that makes the answer machine-checkable going forward.",

@@ -4,7 +4,7 @@
 |---|---|
 | **WP** | WP-10 |
 | **Priority** | P0 |
-| **Status** | pre-freeze |
+| **Status** | frozen (PR #49 merged 2026-08-04) |
 | **Hub** | https://github.com/tzervas/mycelium-lang/issues/44 |
 | **Effort** | L |
 | **Requires re-pin** | yes |

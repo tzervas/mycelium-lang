@@ -2,7 +2,7 @@
 
 **Owning repo:** `tzervas/mycelium-bench`  
 **Package:** `PKG-CI-TRUTH` (https://github.com/tzervas/mycelium-lang/issues/48)  
-**Status:** proposed — NOT yet frozen
+**Status:** FROZEN (mycelium-lang PR #49, merged 2026-08-04)
 
 ## Proposed signature
 

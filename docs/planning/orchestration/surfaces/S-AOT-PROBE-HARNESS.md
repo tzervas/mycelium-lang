@@ -2,7 +2,7 @@
 
 **Owning repo:** `tzervas/mycelium-lang`  
 **Package:** `PKG-WP9-AOT` (https://github.com/tzervas/mycelium-lang/issues/47)  
-**Status:** proposed — NOT yet frozen
+**Status:** FROZEN (mycelium-lang PR #49, merged 2026-08-04)
 
 ## Proposed signature
 

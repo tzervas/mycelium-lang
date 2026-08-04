@@ -3,7 +3,7 @@
  "title": "Typed prim linkage: call Rust from .myc with a CHECKED signature",
  "wp": "WP-10",
  "priority": "P0",
- "status": "pre-freeze",
+ "status": "frozen",
  "hub_issue": "https://github.com/tzervas/mycelium-lang/issues/44",
  "title_prefix": "train/gap-closure:",
  "goal": "Give .myc source a second, TYPED door into Rust: a `use`-resolved, effect-declared typed-prim import that `myc check` verifies (arity + per-arg/result Ty + declared effects) against a registered signature, instead of `wild`'s current ascription-on-faith. Ship it end-to-end for two real crates (mycelium-std-io's to_json/from_json/serialize/deserialize, and mycelium-std-net's http as a checked, non-wild surface) so the mechanism is proven, not just designed. `wild` itself is untouched (additive-only) and reverts to being the audited floor-authoring escape once safe http exists beside it.",

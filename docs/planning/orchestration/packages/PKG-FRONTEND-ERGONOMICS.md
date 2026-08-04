@@ -4,7 +4,7 @@
 |---|---|
 | **WP** | WP-12 |
 | **Priority** | P1 |
-| **Status** | pre-freeze |
+| **Status** | frozen (PR #49 merged 2026-08-04) |
 | **Hub** | https://github.com/tzervas/mycelium-lang/issues/46 |
 | **Effort** | L |
 | **Requires re-pin** | no |
@@ -81,3 +81,14 @@ Designed 2026-08-04 by sonnet sub-planners (workflow `wf_3b412561-c1d`) against 
 behaviour, not the narrative docs — which are known stale. See `docs/CAPABILITY-MATRIX.md` and
 `probes/`. Per `AGENT-PIPELINE.md` the kickoff rule is absolute: no implementer starts without a
 merged package, a linked surface freeze, a hub issue and machine-checkable criteria.
+
+## Correction (2026-08-04): base branch is `main`, not `dev`, for now
+
+This package's lane text requires every PR to target `dev`. That is currently **impossible**: `dev`
+requires the `check` status context, and `ci.yml` triggers only on `branches: [main]`, so GitHub
+resolves a `pull_request` trigger from the base branch and never runs `check` for a dev-targeted PR —
+it can never satisfy its own required check. Dev-aware trigger PRs exist but are unmerged.
+
+The FRONTEND lane followed the kickoff instruction (`main`) and flagged the contradiction rather than
+silently picking one, which is the right behaviour. Target `main` until the dev-aware `ci.yml` triggers
+land, then revert to `dev` as the integration branch.

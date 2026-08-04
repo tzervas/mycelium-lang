@@ -3,7 +3,7 @@
  "title": "Frontend surface: statement sequencing, method/postfix, () unit spelling",
  "wp": "WP-12",
  "priority": "P1",
- "status": "pre-freeze",
+ "status": "frozen",
  "hub_issue": "https://github.com/tzervas/mycelium-lang/issues/46",
  "title_prefix": "train/gap-closure:",
  "goal": "Close the three frontend ergonomics gaps that block 'ordinary programs' in Mycelium L1 \u2014 statement sequencing, method/postfix call syntax, and the `()` unit spelling \u2014 as measured by mycelium-transpile --vet on real Rust (multi-statement 38+, method sugar 31+, unit 13+ per hub issue tzervas/mycelium-l1#6). All three are parser-only (KC-3, zero kernel/eval/mono growth), matching the codebase's own precedent (the already-landed-but-unmerged block-sequencing PR). Landing them removes the specific frontend blocker that stops an IR modelling imperative statement sequences or method dispatch from lowering to .myc (py2rust -> IR -> Rust, mycelium-transpile consuming the same IR).",
