@@ -1,0 +1,14 @@
+// @probe: process-spawn-wait
+// @capability: spawn a real child process and reap its exit status
+// @expect-check: 0
+// @expect-run: 0
+// @claim: EXPRESSIBILITY-GAPS s2: "Process: subprocess — ABSENT (only exit) — CRITICAL" (mycelium-lang#19)
+// @note: Measured 2026-08-03: CLOSED. process_spawn/process_wait/process_kill are registered in
+// @note: mycelium-std-sys-host/src/host_registry.rs with documented encodings and a host ProcessTable.
+// @note: 0x2f62696e2f74727565 is the Bytes literal for "/bin/true".
+// @note: process_wait returns an exit-status triple and REMOVES the handle (reaps).
+nodule probe @std-sys;
+
+fn main() => Seq{Binary{32}, 3} !{ffi} =
+  let h = (wild { process_spawn(0x2f62696e2f74727565) }) : Binary{64} in
+  (wild { process_wait(h) }) : Seq{Binary{32}, 3};

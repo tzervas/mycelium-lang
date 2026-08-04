@@ -1,0 +1,19 @@
+// @probe: wild-return-type-unenforced
+// @capability: whether a fn's declared result type is ENFORCED across a `wild` boundary
+// @requires: network
+// @expect-check: 0
+// @expect-run: 0
+// @claim: not in the 2026-07-29 report — found 2026-08-03
+// @note: SOUNDNESS HOLE. This declares `=> Bytes` but http_request actually returns
+// @note: Seq{elem:Bytes,len:3}. Both check and run report SUCCESS and the runtime happily yields
+// @note: the Seq — the declared type is simply wrong and nothing catches it.
+// @note: Independently reproduced by ascribing a clock op to Unit: `(wild { time_mono_nanos() }) : Unit`
+// @note: checks and runs but prints the raw Binary{64}, mislabelled.
+// @note: So types at the wild boundary are TRUSTED, not verified. That is defensible as an audited-
+// @note: floor design choice, but it is currently undocumented and it means a wrong type propagates
+// @note: silently into ordinary code — which is in tension with G2 "never silent".
+// @note: expect-run=0 records TODAY'S behaviour. If this ever DRIFTs to a refusal, the hole was closed.
+nodule probe @std-sys;
+
+fn main() => Bytes !{ffi} =
+  wild { http_request("GET", "https://example.com/", "", "", 0b0000_0000_0000_0000_0000_0000_0000_0000) };

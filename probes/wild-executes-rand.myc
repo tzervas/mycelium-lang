@@ -1,0 +1,9 @@
+// @probe: wild-executes-rand
+// @capability: host entropy op returns real bytes through `wild {}`
+// @expect-check: 0
+// @expect-run: 0
+// @note: Bytes is CoreValue::Repr, which is why this runs where a Data-valued result does not
+// @note: (see probe unit-as-main-result).
+nodule probe @std-sys;
+
+fn main() => Bytes !{ffi} = wild { rand_fill(0b0000_1000) };

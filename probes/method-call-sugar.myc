@@ -1,0 +1,13 @@
+// @probe: method-call-sugar
+// @capability: postfix method / field syntax `x.m()`
+// @expect-check: 65
+// @expect-run: 65
+// @claim: EXPRESSIBILITY-GAPS s3.1: "No method-call sugar x.m() — 31+ gaps" (l1#6)
+// @note: Measured 2026-08-03: STILL OPEN, and it is a parser/grammar gap rather than check-time.
+// @note: The dot token needs a production allowing it as a general postfix operator on arbitrary
+// @note: expressions, distinct from (or unifying with) the module-qualified-path production (M-662).
+nodule probe;
+
+fn answer() => Binary{8} = 0b0010_1010;
+
+fn main() => Binary{8} = answer().identity();

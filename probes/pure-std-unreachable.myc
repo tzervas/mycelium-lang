@@ -1,0 +1,18 @@
+// @probe: pure-std-unreachable
+// @capability: calling ANY pure std function from .myc source
+// @expect-check: 65
+// @expect-run: 65
+// @claim: EXPRESSIBILITY-GAPS s2: "JSON/config: Value<->JSON only; no TOML — High" (#20, std-io#6),
+// @claim: and WP-2 item 6 calls codecs "pure, can start early"
+// @note: THE BIGGEST FINDING of the 2026-08-03 sweep, and absent from the report.
+// @note: A real, tested, pure Value<->JSON codec EXISTS (mycelium-std-io/src/serialize.rs, serde_json
+// @note: backed, proptest round-trip, never-silent NaN/Inf refusal) — but it is unreachable.
+// @note: Nothing in interp/check/l1 depends on mycelium-std-io, and L1 has NO import/module
+// @note: construct at all beyond the atomic @std-sys marker that gates `wild`. There is no `use std.io;`.
+// @note: Observed: "unknown function/constructor/prim to_json" — the same error a made-up identifier gives.
+// @note: CONSEQUENCE: all 26 pure mycelium-std-* crates are unreachable from Mycelium source; the only
+// @note: door into Rust is the @std-sys-gated FFI floor. So "codecs can start early" is false —
+// @note: nothing can call a codec until a pure-linkage surface exists.
+nodule probe;
+
+fn main() => Binary{8} = to_json(0b0010_1010);

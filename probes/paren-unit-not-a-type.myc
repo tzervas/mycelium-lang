@@ -1,0 +1,9 @@
+// @probe: paren-unit-not-a-type
+// @capability: bare `()` spelled as a type
+// @expect-check: 65
+// @expect-run: 65
+// @claim: The docs' phrase "no unit value ()" implies unit is missing; in fact only the `()` SPELLING is.
+// @note: Write `Unit`, not `()`. Observed: error[myc-parse]: expected a type, found RParen.
+nodule probe;
+
+fn main() => () = ();

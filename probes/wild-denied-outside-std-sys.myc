@@ -1,0 +1,10 @@
+// @probe: wild-denied-outside-std-sys
+// @capability: `wild` is refused outside an @std-sys nodule (audited FFI floor boundary)
+// @expect-check: 65
+// @expect-run: 65
+// @claim: RFC-0016 s8-Q6 / LR-9 — the audited FFI floor lives only in std-sys; "never a silent escape" (G2)
+// @note: This probe asserts a SECURITY boundary still holds. If it ever reports as-expected=no,
+// @note: the FFI floor has been opened to arbitrary nodules — that is a regression, not progress.
+nodule probe;
+
+fn main() => Binary{64} !{ffi} = wild { time_mono_nanos() };
